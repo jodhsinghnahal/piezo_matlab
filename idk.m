@@ -29,6 +29,7 @@ model = "seh_simscape_model";
 vpName     = "vp_sim";
 vstoreName = "vstore_sim";
 ieqName    = "ieq_sim";
+irectName = "irect_sim";
 
 % Equivalent electrical-domain mechanical parameters
 % From Liang & Liao experimental setup / equivalent model
@@ -60,7 +61,7 @@ t_start_ss_single = 3.0;
 maxStep = T/400;
 
 % Load sweep settings
-doSweep = false;
+doSweep = true;
 
 % Avoid going too high unless you allow very long simulations.
 % With Crect = 1e-6, Rload = 10 MOhm gives tau = 10 s.
@@ -85,7 +86,7 @@ fprintf("\n============================================================\n");
 fprintf("SINGLE DETAILED SEH RUN\n");
 fprintf("============================================================\n");
 
-single = runOneSEH(model, vpName, vstoreName, ieqName, ...
+single = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     L, R, C, Cp, Crect, Rload_single, VF_bridge, ...
     f, stopTime_single, t_start_ss_single, maxStep);
 
@@ -126,10 +127,9 @@ if doSweep
             k, N, Rload_k, tauRC, stopTime_k);
 
         try
-            sweepResults(k) = runOneSEH(model, vpName, vstoreName, ieqName, ...
+            sweepResults(k) = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
                 L, R, C, Cp, Crect, Rload_k, VF_bridge, ...
                 f, stopTime_k, t_start_ss_k, maxStep);
-
         catch ME
             warning("Sweep failed at Rload = %.4e ohm: %s", Rload_k, ME.message);
             sweepResults(k) = emptyResultStruct();
@@ -181,7 +181,7 @@ fprintf("  seh_sweep_table in base workspace\n");
 % LOCAL FUNCTIONS
 % ============================================================
 
-function result = runOneSEH(model, vpName, vstoreName, ieqName, ...
+function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     L, R, C, Cp, Crect, Rload, VF_bridge, ...
     f, stopTime, t_start_ss, maxStep)
 
@@ -246,12 +246,16 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, ...
     [t_vs, vstore] = cleanTimeSignal(t_vs, vstore);
     [t_i, ieq] = cleanTimeSignal(t_i, ieq);
 
+    [t_ir, irect] = readSignalDirect(simOut, irectName);
+    [t_ir, irect] = cleanTimeSignal(t_ir, irect);
+    
     % Use vp time as common time base
     t = t_vp(:);
     vp = vp(:);
 
     vstore = interp1(t_vs, vstore, t, "linear", "extrap");
     ieq = interp1(t_i, ieq, t, "linear", "extrap");
+    irect = interp1(t_ir, irect, t, "linear", "extrap");
 
     %% Steady-state region
     idx_ss = t >= t_start_ss;
@@ -279,6 +283,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, ...
     vp_c = vp(idx_cycle);
     vstore_c = vstore(idx_cycle);
     ieq_c = ieq(idx_cycle);
+    irect_c = irect(idx_cycle);
 
     tau = t_c - t_c(1);
 
@@ -367,6 +372,8 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, ...
 
     %% Rough theta measurement from simulated clamped region
     theta_sim_rough = estimateThetaFromVpClamp(tau, vp_c, Vrect_sim, T);
+    %% use this instead
+    theta_sim_exact = estimateThetaFromRectCurrent(t_c, irect_c, ieq_phase, f);
 
     %% Ideal paper waveform for one cycle
     vp_paper = nan(size(t_c));
@@ -457,6 +464,8 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, ...
 
     result.stopTime = stopTime;
     result.t_start_ss = t_start_ss;
+ 
+    result.theta_sim_exact = theta_sim_exact;
 end
 
 function printSingleSummary(r)
@@ -484,6 +493,8 @@ function printSingleSummary(r)
             r.theta_paper, rad2deg(r.theta_paper));
         fprintf("theta_sim_rough = %.6f rad = %.3f deg\n", ...
             r.theta_sim_rough, rad2deg(r.theta_sim_rough));
+        fprintf("theta_sim_exact = %.6f rad = %.3f deg\n", ...
+            r.theta_sim_exact, rad2deg(r.theta_sim_exact));
     else
         fprintf("theta_paper = NaN because Vtilde_rect is outside (0,1)\n");
     end
@@ -690,12 +701,16 @@ function plotSweepResults(tbl, w, Cp)
     %% Theta validation
     figure("Name", "Sweep: Rectifier Blocked Angle");
     plot(tbl.Vtilde_rect(validV), tbl.theta_paper_rad(validV), "o-", "LineWidth", 1.4); hold on;
-    plot(tbl.Vtilde_rect(validV), tbl.theta_sim_rough_rad(validV), "s--", "LineWidth", 1.4);
+    % plot(tbl.Vtilde_rect(validV), tbl.theta_sim_rough_rad(validV), "s--", "LineWidth", 1.4);
+    plot(tbl.Vtilde_rect(validV), tbl.theta_sim_exact_rad(validV), "s--", "LineWidth", 1.4);
+
     grid on;
     xlabel("\tilde{V}_{rect}");
     ylabel("\theta (rad)");
-    title("Rectifier Blocked Angle: Paper Formula vs Rough Simscape Estimate");
-    legend("\theta from paper formula", "\theta rough from v_p clamp", ...
+    title("Rectifier Blocked Angle: Paper Formula vs Simscape Estimate");
+    % legend("\theta from paper formula", "\theta rough from v_p clamp", ...
+    %     "Location", "best");
+    legend("\theta from paper formula", "\theta from rectifier current", ...
         "Location", "best");
 end
 
@@ -713,6 +728,7 @@ function tbl = resultsToTable(res)
 
     theta_paper = NaN(N,1);
     theta_sim_rough = NaN(N,1);
+    theta_sim_exact = NaN(N,1);
 
     Pload_avg = NaN(N,1);
     Pdelta_time = NaN(N,1);
@@ -748,6 +764,7 @@ function tbl = resultsToTable(res)
 
         theta_paper(k) = res(k).theta_paper;
         theta_sim_rough(k) = res(k).theta_sim_rough;
+        theta_sim_exact(k) = res(k).theta_sim_exact;
 
         Pload_avg(k) = res(k).Pload_avg;
         Pdelta_time(k) = res(k).Pdelta_time;
@@ -774,7 +791,7 @@ function tbl = resultsToTable(res)
     end
 
     tbl = table(valid, Rload, Vstore_avg, Vrect, Voc, Vtilde_rect, Vtilde_F, ...
-        theta_paper, theta_sim_rough, ...
+        theta_paper, theta_sim_rough, theta_sim_exact, ...
         Pload_avg, Pdelta_time, Pdelta_fundamental, Ph_eq42_auto, Pdelta_eq43_auto, ...
         Re_Zelec_sim, Im_Zelec_sim, Re_Zelec_paper, Im_Zelec_paper, ...
         Rd, Rh, XE, I0, VpF_amp, Veq_amp, currentSign, stopTime, t_start_ss);
@@ -789,6 +806,7 @@ tbl.Properties.VariableNames = [ ...
     "Vtilde_F", ...
     "theta_paper_rad", ...
     "theta_sim_rough_rad", ...
+    "theta_sim_exact_rad", ...
     "Pload_avg_W", ...
     "Pdelta_time_W", ...
     "Pdelta_fundamental_W", ...
@@ -867,6 +885,7 @@ function result = emptyResultStruct()
 
     result.theta_paper = NaN;
     result.theta_sim_rough = NaN;
+    result.theta_sim_exact = NaN;
 
     result.Zelec_sim = NaN + 1j*NaN;
     result.Zelec_paper = NaN + 1j*NaN;
@@ -1071,5 +1090,76 @@ function r = simpleCorr(a, b)
         r = 0;
     else
         r = sum(a .* b) / denom;
+    end
+end
+
+function theta_est = estimateThetaFromRectCurrent(t, irect, ieq_phase, f)
+
+    theta_est = NaN;
+
+    t = t(:);
+    irect = abs(irect(:));
+
+    w = 2*pi*f;
+
+    % Phase referenced to equivalent current source
+    phi = mod(w*t + ieq_phase, 2*pi);
+
+    % Sort by phase
+    [phi, idx] = sort(phi);
+    irect = irect(idx);
+
+    % Use only positive half-cycle
+    posHalf = phi >= 0 & phi <= pi;
+    phi_pos = phi(posHalf);
+    i_pos = irect(posHalf);
+
+    if numel(phi_pos) < 10 || max(i_pos) <= 0
+        return;
+    end
+
+    % Smooth current slightly to remove numerical spikes
+    i_pos = movmean(i_pos, 5);
+
+    % Threshold relative to max conduction current
+    threshold = max(1e-10, 0.05 * max(i_pos));
+
+    conducting = i_pos > threshold;
+
+    if ~any(conducting)
+        return;
+    end
+
+    % Find all continuous conduction regions
+    d = diff([false; conducting; false]);
+    runStarts = find(d == 1);
+    runEnds   = find(d == -1) - 1;
+
+    % SEH positive-half conduction should end near pi.
+    % Choose the conduction region whose end is closest to pi.
+    [~, bestRun] = min(abs(phi_pos(runEnds) - pi));
+
+    startIdx = runStarts(bestRun);
+
+    if startIdx <= 1
+        theta_est = phi_pos(startIdx);
+        return;
+    end
+
+    % Interpolate crossing for better accuracy
+    phi1 = phi_pos(startIdx - 1);
+    phi2 = phi_pos(startIdx);
+
+    i1 = i_pos(startIdx - 1);
+    i2 = i_pos(startIdx);
+
+    if i2 == i1
+        theta_est = phi2;
+    else
+        theta_est = phi1 + (threshold - i1) * (phi2 - phi1) / (i2 - i1);
+    end
+
+    if theta_est < 0 || theta_est > pi
+        theta_est = NaN;
     end
 end
