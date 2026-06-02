@@ -320,7 +320,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, ...
     Vtilde_sim = Vrect_sim / Voc_sim;
     Vtilde_F = VF_bridge / Voc_sim;
 
-    theta_paper = NaN;
+    theta_paper = NaN;vp_c
     Zelec_paper = NaN + 1j*NaN;
     Rd = NaN;
     Rh = NaN;
