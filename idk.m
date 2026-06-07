@@ -42,13 +42,25 @@ Cp = 34.69e-9;    % F
 Crect = 1e-6;     % F
 
 % If each diode is about 0.5 V, total bridge drop is about 1.0 V.
-Vd_single = 0.5;                 
+Vd_single = 0.5;
 VF_bridge = 2 * Vd_single;       % total conducting bridge drop, V
+r_single = 0.3; % the on resistance
+% a1 = 0.04;
+% v1 = 0.8;
+% a2 = 6.00;
+% v2 = 1.26;
+% ron = (v2 - v1) / (a2 - a1);
+% vf = v1 - a1 * ron;
 
 % Excitation
 f = 42;                         % Hz
 w = 2*pi*f;
 T = 1/f;
+ae = 4.75*10^-4;
+Y_rms_accel = 10;
+y_peak_accel = sqrt(2) * Y_rms_accel;
+global VSrc_eq_amp;
+VSrc_eq_amp = L * ae * y_peak_accel;
 
 % Single-run load
 Rload_single = 1e6;
@@ -62,6 +74,8 @@ maxStep = T/400;
 
 % Load sweep settings
 doSweep = true;
+
+doNumOnly = false;
 
 % Avoid going too high unless you allow very long simulations.
 % With Crect = 1e-6, Rload = 10 MOhm gives tau = 10 s.
@@ -99,6 +113,36 @@ assignin("base", "seh_single_result", single);
 % ============================================================
 
 plotSingleRun(single);
+
+%% ============================================================
+% INDEPENDENT PAPER-ONLY NUMERICAL SEH PREDICTION
+% No Simscape signals used.
+% Solves for the operating point using only paper equations.
+% ============================================================
+
+if doNumOnly
+    fprintf("\n============================================================\n");
+    fprintf("INDEPENDENT PAPER-ONLY SEH PREDICTION\n");
+    fprintf("============================================================\n");
+    
+    paperOnly = predictSEH_paper_only( ...
+        L, R, C, Cp, VF_bridge, f, VSrc_eq_amp, Rload_single);
+    
+    printPaperOnlySummary(paperOnly);
+    
+    assignin("base", "seh_paper_only_result", paperOnly);
+    
+    % Optional comparison if you already ran Simscape and have "single"
+    if exist("single", "var") && isfield(single, "Pload_avg")
+        fprintf("\n===== COMPARISON TO SIMSCAPE =====\n");
+        fprintf("Paper-only harvested power = %.6f mW\n", paperOnly.Ph_W * 1000);
+        fprintf("Simscape harvested power   = %.6f mW\n", single.Pload_avg * 1000);
+        fprintf("Difference                 = %.6f mW\n", ...
+            (paperOnly.Ph_W - single.Pload_avg) * 1000);
+        fprintf("Percent difference          = %.3f %%\n", ...
+            100 * (paperOnly.Ph_W - single.Pload_avg) / single.Pload_avg);
+    end
+end
 
 %% ============================================================
 % LOAD SWEEP
@@ -184,6 +228,7 @@ fprintf("  seh_sweep_table in base workspace\n");
 function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     L, R, C, Cp, Crect, Rload, VF_bridge, ...
     f, stopTime, t_start_ss, maxStep)
+    global VSrc_eq_amp;
 
     w = 2*pi*f;
     T = 1/f;
@@ -210,6 +255,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     assignin("base", "Crect", Crect);
     assignin("base", "VF_bridge", VF_bridge);
     assignin("base", "VF", VF_bridge);
+    assignin("base", "VSrc_eq_amp", VSrc_eq_amp);
     assignin("base", "f", f);
     assignin("base", "w", w);
 
@@ -231,6 +277,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     simIn = simIn.setVariable("Crect", Crect);
     simIn = simIn.setVariable("VF_bridge", VF_bridge);
     simIn = simIn.setVariable("VF", VF_bridge);
+    simIn = simIn.setVariable("VSrc_eq_amp", VSrc_eq_amp);
     simIn = simIn.setVariable("f", f);
     simIn = simIn.setVariable("w", w);
 
@@ -351,6 +398,12 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
         % Estimate equivalent source amplitude from simulated phasors
         Veq_phasor = (Zmech + Zelec_sim) * Ie_phasor;
         Veq_amp = abs(Veq_phasor);
+        
+        % use equation 44 in paper instead
+        ZL  = 1j*w*L;
+        ZC  = 1/(1j*w*C);
+        ZCp = 1/(1j*w*Cp);
+        Veq_amp = abs(R + ZL + ZC + ZCp) / abs(ZCp) * Voc_sim;
 
         X_total = imag(Zmech) + XE;
 
@@ -364,6 +417,12 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
         Zmech = R + 1j*w*L + 1/(1j*w*C);
         Veq_phasor = (Zmech + Zelec_sim) * Ie_phasor;
         Veq_amp = abs(Veq_phasor);
+
+        % use equation 44 in paper instead
+        ZL  = 1j*w*L;
+        ZC  = 1/(1j*w*C);
+        ZCp = 1/(1j*w*Cp);
+        Veq_amp = abs(R + ZL + ZC + ZCp) / abs(ZCp) * Voc_sim;
     end
 
     %% Extracted electrical power from time-domain and fundamental-domain
@@ -638,7 +697,7 @@ function plotSweepResults(tbl, w, Cp)
     plot(tbl.Vtilde_rect(validV), tbl.Ph_eq42_auto_W(validV)*1000, "s--", "LineWidth", 1.2);
     plot(tbl.Vtilde_rect(validV), tbl.Pdelta_eq43_auto_W(validV)*1000, "d:", "LineWidth", 1.2);
     grid on;
-    xlabel("\tilde{V}_{rect} = V_{rect}/V_{oc}");
+    xlabel("$\tilde{V}_{rect} = V_{rect}/V_{oc}$", 'Interpreter', 'latex');
     ylabel("Power (mW)");
     title("SEH Power vs Normalized Rectified Voltage");
     legend("Simscape harvested/load", ...
@@ -652,7 +711,7 @@ function plotSweepResults(tbl, w, Cp)
     plot(tbl.Vtilde_rect(validV), tbl.Rh_ohm(validV), "s-", "LineWidth", 1.3);
     plot(tbl.Vtilde_rect(validV), tbl.XE_ohm(validV), "d-", "LineWidth", 1.3);
     grid on;
-    xlabel("\tilde{V}_{rect}");
+    xlabel("$\tilde{V}_{rect}$", 'Interpreter', 'latex');
     ylabel("Ohms");
     title("SEH Equivalent Impedance Decomposition");
     legend("R_d dissipative", "R_h harvesting", "X_E reactive", ...
@@ -693,7 +752,7 @@ function plotSweepResults(tbl, w, Cp)
     plot(tbl.Vtilde_rect(validV), tbl.Im_Zelec_sim_ohm(validV), "o-", "LineWidth", 1.4); hold on;
     plot(tbl.Vtilde_rect(validV), tbl.Im_Zelec_paper_ohm(validV), "s--", "LineWidth", 1.4);
     grid on;
-    xlabel("\tilde{V}_{rect}");
+    xlabel("$\tilde{V}_{rect}$", 'Interpreter', 'latex');
     ylabel("Im[Z_{elec}] (\Omega)");
     title("Imaginary Part of Z_{elec}");
     legend("Simscape", "Paper", "Location", "best");
@@ -705,7 +764,7 @@ function plotSweepResults(tbl, w, Cp)
     plot(tbl.Vtilde_rect(validV), tbl.theta_sim_exact_rad(validV), "s--", "LineWidth", 1.4);
 
     grid on;
-    xlabel("\tilde{V}_{rect}");
+    xlabel("$\tilde{V}_{rect}$", 'Interpreter', 'latex');
     ylabel("\theta (rad)");
     title("Rectifier Blocked Angle: Paper Formula vs Simscape Estimate");
     % legend("\theta from paper formula", "\theta rough from v_p clamp", ...
@@ -1162,4 +1221,219 @@ function theta_est = estimateThetaFromRectCurrent(t, irect, ieq_phase, f)
     if theta_est < 0 || theta_est > pi
         theta_est = NaN;
     end
+end
+
+
+
+function out = predictSEH_paper_only(L, R, C, Cp, VF, f, Veq_amp, Rload)
+% Independent paper-only SEH prediction.
+%
+% Unknowns:
+%   q = Vtilde_rect = Vrect / Voc
+%   v = Vtilde_F    = VF / Voc
+%
+% Constraints:
+%   0 < v < q < 1
+%
+% Conditions solved:
+%   1) v must equal VF / Voc
+%   2) Eq. 42 harvested power must equal Vstore^2 / Rload
+
+    w = 2*pi*f;
+
+    bestObj = Inf;
+    bestX = [];
+
+    % Multistart guesses for better robustness
+    qGuesses = [0.05 0.10 0.20 0.40 0.60 0.80 0.95];
+    rGuesses = [0.01 0.03 0.05 0.10 0.20 0.50 0.80];
+
+    options = optimset( ...
+        "Display", "off", ...
+        "MaxIter", 5000, ...
+        "MaxFunEvals", 20000, ...
+        "TolX", 1e-12, ...
+        "TolFun", 1e-12);
+
+    for q0 = qGuesses
+        for r0 = rGuesses
+
+            % r = v/q, so v = q*r and automatically v < q
+            x0 = [log(q0/(1-q0)); log(r0/(1-r0))];
+
+            [xBest, objBest] = fminsearch(@objective, x0, options);
+
+            if objBest < bestObj
+                bestObj = objBest;
+                bestX = xBest;
+            end
+        end
+    end
+
+    [q, v] = decodeUnknowns(bestX);
+    out = evalPaperPoint(q, v);
+
+    out.valid = bestObj < 1e-8;
+    out.objective = bestObj;
+    out.residual_norm = sqrt(bestObj);
+
+    %% ---------------- nested functions ----------------
+
+    function J = objective(x)
+        [qTry, vTry] = decodeUnknowns(x);
+        d = evalPaperPoint(qTry, vTry);
+
+        if ~d.valid
+            J = 1e12;
+            return;
+        end
+
+        % Condition 1:
+        % Chosen v must match actual VF/Voc
+        errVF = log(max(vTry, realmin) / max(d.Vtilde_F_from_Voc, realmin));
+
+        % Condition 2:
+        % Paper Eq. 42 power must match DC load power
+        errPower = log(max(d.Ph_W, realmin) / max(d.Pload_W, realmin));
+
+        J = errVF^2 + errPower^2;
+    end
+
+    function [qVal, vVal] = decodeUnknowns(x)
+        % Safe sigmoid mapping
+        x1 = min(max(x(1), -60), 60);
+        x2 = min(max(x(2), -60), 60);
+
+        qVal = 1 / (1 + exp(-x1));   % 0 < q < 1
+        rVal = 1 / (1 + exp(-x2));   % 0 < r < 1
+
+        qVal = min(max(qVal, 1e-9), 1 - 1e-9);
+        rVal = min(max(rVal, 1e-9), 1 - 1e-9);
+
+        vVal = qVal * rVal;          % guarantees 0 < v < q
+    end
+
+    function d = evalPaperPoint(qVal, vVal)
+
+        d = struct();
+        d.valid = false;
+
+        if ~(isfinite(qVal) && isfinite(vVal) && vVal > 0 && qVal > vVal && qVal < 1)
+            return;
+        end
+
+        theta = acos(1 - 2*qVal);
+
+        XL = w * L;
+        XC = -1 / (w * C);
+
+        K = 1 / (pi*w*Cp);
+
+        % Paper SEH impedance decomposition
+        Rd = 4*K*vVal*(1 - qVal);
+        Rh = 4*K*(qVal - vVal)*(1 - qVal);
+        XE = K*(sin(theta)*cos(theta) - theta);
+
+        Xtotal = XL + XC + XE;
+        Rtotal = R + Rd + Rh;
+
+        denom2 = Xtotal^2 + Rtotal^2;
+        denom = sqrt(denom2);
+
+        % Source current amplitude from impedance network
+        I0 = Veq_amp / denom;
+
+        % Open-circuit piezo voltage amplitude
+        Voc = I0 / (w * Cp);
+
+        % Voltages from normalized variables
+        Vrect = qVal * Voc;
+        Vstore = Voc * (qVal - vVal);
+
+        % The actual forward drop implied by the solved Voc
+        Vtilde_F_from_Voc = VF / Voc;
+
+        % Eq. 42 harvested power
+        Ph = 0.5 * Veq_amp^2 * Rh / denom2;
+
+        % Eq. 43 extracted power
+        Pdelta = 0.5 * Veq_amp^2 * (Rh + Rd) / denom2;
+
+        % DC load power consistency
+        Pload = Vstore^2 / Rload;
+
+        % Electrical impedance
+        Zelec = Rd + Rh + 1j*XE;
+
+        d.valid = isfinite(Ph) && isfinite(Pload) && Ph > 0 && Pload > 0;
+
+        d.Rload = Rload;
+        d.f = f;
+        d.w = w;
+        d.Veq_amp = Veq_amp;
+
+        d.Vtilde_rect = qVal;
+        d.Vtilde_F = vVal;
+        d.Vtilde_F_from_Voc = Vtilde_F_from_Voc;
+
+        d.theta_rad = theta;
+        d.theta_deg = rad2deg(theta);
+
+        d.Rd = Rd;
+        d.Rh = Rh;
+        d.XE = XE;
+        d.Zelec = Zelec;
+
+        d.XL = XL;
+        d.XC = XC;
+        d.Xtotal = Xtotal;
+        d.Rtotal = Rtotal;
+
+        d.I0 = I0;
+        d.Voc = Voc;
+        d.Vrect = Vrect;
+        d.Vstore = Vstore;
+
+        d.Ph_W = Ph;
+        d.Pdelta_W = Pdelta;
+        d.Pdiss_W = Pdelta - Ph;
+        d.Pload_W = Pload;
+    end
+end
+
+function printPaperOnlySummary(r)
+
+    fprintf("\n===== Independent Paper-Only Operating Point =====\n");
+
+    if ~r.valid
+        fprintf("WARNING: Solver did not fully converge.\n");
+    end
+
+    fprintf("Residual norm = %.6e\n", r.residual_norm);
+    fprintf("Rload = %.6e ohm\n", r.Rload);
+    fprintf("Veq amplitude = %.6f V\n", r.Veq_amp);
+
+    fprintf("\n===== Normalized Voltage Values =====\n");
+    fprintf("Vtilde_rect = %.6f\n", r.Vtilde_rect);
+    fprintf("Vtilde_F solved = %.6f\n", r.Vtilde_F);
+    fprintf("Vtilde_F from VF/Voc = %.6f\n", r.Vtilde_F_from_Voc);
+    fprintf("theta = %.6f rad = %.3f deg\n", r.theta_rad, r.theta_deg);
+
+    fprintf("\n===== Predicted Voltages and Current =====\n");
+    fprintf("I0 = %.6e A\n", r.I0);
+    fprintf("Voc = %.6f V\n", r.Voc);
+    fprintf("Vrect = %.6f V\n", r.Vrect);
+    fprintf("Vstore = %.6f V\n", r.Vstore);
+
+    fprintf("\n===== Paper SEH Impedance Decomposition =====\n");
+    fprintf("Rd = %.6e ohm\n", r.Rd);
+    fprintf("Rh = %.6e ohm\n", r.Rh);
+    fprintf("XE = %.6e ohm\n", r.XE);
+    fprintf("Zelec = %.6e + j%.6e ohm\n", real(r.Zelec), imag(r.Zelec));
+
+    fprintf("\n===== Independent Paper-Only Power Prediction =====\n");
+    fprintf("Eq. 42 harvested power Ph = %.6f mW\n", r.Ph_W * 1000);
+    fprintf("Load consistency Vstore^2/Rload = %.6f mW\n", r.Pload_W * 1000);
+    fprintf("Eq. 43 extracted power Pdelta = %.6f mW\n", r.Pdelta_W * 1000);
+    fprintf("Predicted dissipated power = %.6f mW\n", r.Pdiss_W * 1000);
 end
