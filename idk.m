@@ -24,7 +24,7 @@ clear; clc; close all;
 % USER SETTINGS
 % ============================================================
 
-model = "seh_simscape_model";
+model = "psshi_simscape_model";
 
 vpName     = "vp_sim";
 vstoreName = "vstore_sim";
@@ -85,6 +85,48 @@ minStopTime = 5.0;
 tauMultiplier = 8.0;                 % simulate about 8 RC time constants
 maxStopTime = 90.0;                  % safety cap
 ssStartFraction = 0.75;              % use last 25% as steady-state
+
+%% P-SSHI settings
+% Li = 10e-3;                 % SSHI inductor, H
+% Rsw = 10;                   % switching-loop resistance, ohm
+% 
+% Tsw = pi * sqrt(Li * Cp);   % switch closed time for half LC cycle
+% blankingTime = 0.25 / f;    % prevents repeated triggering near zero
+% tEnable = 3 / f;            % delay switching until startup settles
+% 
+% Ieps = 1e-7;                % current deadband for zero-cross detection
+% 
+% % Optional paper inversion factor estimate
+% Qsw = sqrt(Li / Cp) / Rsw;
+% gamma = -exp(-pi / (2 * Qsw));
+% 
+% R_closed = 0.01;
+% G_open   = 1e-8;
+% Threshold = 0.5;
+%% Declare global variables first
+global Li Rsw Tsw blankingTime tEnable Ieps Qsw gamma R_closed G_open Threshold
+
+%% P-SSHI settings
+Li = 10e-3;                 % SSHI inductor, H
+Rsw = 10;                   % switching-loop resistance, ohm
+Tsw = pi * sqrt(Li * Cp);   % switch closed time for half LC cycle
+blankingTime = 0.25 / f;    % prevents repeated triggering near zero
+tEnable = 3 / f;            % delay switching until startup settles
+Ieps = 1e-7;                % current deadband for zero-cross detection
+
+% Optional paper inversion factor estimate
+Qsw = sqrt(Li / Cp) / Rsw;
+gamma = -exp(-pi / (2 * Qsw));
+R_closed = 0.01;
+G_open   = 1e-8;
+Threshold = 0.5;
+assignin("base", "Li", Li);
+assignin("base", "Rsw", Rsw);
+assignin("base", "Tsw", Tsw);
+assignin("base", "blankingTime", blankingTime);
+assignin("base", "tEnable", tEnable);
+assignin("base", "Ieps", Ieps);
+assignin("base", "gamma", gamma);
 
 %% ============================================================
 % LOAD MODEL
@@ -229,6 +271,13 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     L, R, C, Cp, Crect, Rload, VF_bridge, ...
     f, stopTime, t_start_ss, maxStep)
     global VSrc_eq_amp;
+    global Li;
+    global Rsw;
+    global Tsw;
+    global blankingTime;
+    global tEnable;
+    global Ieps;
+    global gamma;
 
     w = 2*pi*f;
     T = 1/f;
@@ -280,6 +329,13 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     simIn = simIn.setVariable("VSrc_eq_amp", VSrc_eq_amp);
     simIn = simIn.setVariable("f", f);
     simIn = simIn.setVariable("w", w);
+    simIn = simIn.setVariable("Li", Li);
+    simIn = simIn.setVariable("Rsw", Rsw);
+    simIn = simIn.setVariable("Tsw", Tsw);
+    simIn = simIn.setVariable("blankingTime", blankingTime);
+    simIn = simIn.setVariable("tEnable", tEnable);
+    simIn = simIn.setVariable("Ieps", Ieps);
+    simIn = simIn.setVariable("gamma", gamma);
 
     %% Run simulation
     simOut = sim(simIn);

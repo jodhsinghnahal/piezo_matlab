@@ -24,7 +24,7 @@ clear; clc; close all;
 % USER SETTINGS
 % ============================================================
 
-model = "seh_simscape_model";
+model = "psshi_simscape_model";
 
 vpName     = "vp_sim";
 vstoreName = "vstore_sim";
@@ -73,7 +73,9 @@ t_start_ss_single = 3.0;
 maxStep = T/400;
 
 % Load sweep settings
-doSweep = true;
+doSweep = false;
+
+doNumOnly = false;
 
 % Avoid going too high unless you allow very long simulations.
 % With Crect = 1e-6, Rload = 10 MOhm gives tau = 10 s.
@@ -83,6 +85,32 @@ minStopTime = 5.0;
 tauMultiplier = 8.0;                 % simulate about 8 RC time constants
 maxStopTime = 90.0;                  % safety cap
 ssStartFraction = 0.75;              % use last 25% as steady-state
+
+%% P-SSHI settings
+Li = 10e-3;                 % SSHI inductor, H
+Rsw = 10;                   % switching-loop resistance, ohm
+
+Tsw = pi * sqrt(Li * Cp);   % switch closed time for half LC cycle
+blankingTime = 0.25 / f;    % prevents repeated triggering near zero
+tEnable = 3 / f;            % delay switching until startup settles
+
+Ieps = 1e-7;                % current deadband for zero-cross detection
+
+% Optional paper inversion factor estimate
+Qsw = sqrt(Li / Cp) / Rsw;
+gamma = -exp(-pi / (2 * Qsw));
+
+R_closed = 0.01;
+G_open   = 1e-8;
+Threshold = 0.5;
+
+assignin("base", "Li", Li);
+assignin("base", "Rsw", Rsw);
+assignin("base", "Tsw", Tsw);
+assignin("base", "blankingTime", blankingTime);
+assignin("base", "tEnable", tEnable);
+assignin("base", "Ieps", Ieps);
+assignin("base", "gamma", gamma);
 
 %% ============================================================
 % LOAD MODEL
@@ -118,26 +146,28 @@ plotSingleRun(single);
 % Solves for the operating point using only paper equations.
 % ============================================================
 
-fprintf("\n============================================================\n");
-fprintf("INDEPENDENT PAPER-ONLY SEH PREDICTION\n");
-fprintf("============================================================\n");
-
-paperOnly = predictSEH_paper_only( ...
-    L, R, C, Cp, VF_bridge, f, VSrc_eq_amp, Rload_single);
-
-printPaperOnlySummary(paperOnly);
-
-assignin("base", "seh_paper_only_result", paperOnly);
-
-% Optional comparison if you already ran Simscape and have "single"
-if exist("single", "var") && isfield(single, "Pload_avg")
-    fprintf("\n===== COMPARISON TO SIMSCAPE =====\n");
-    fprintf("Paper-only harvested power = %.6f mW\n", paperOnly.Ph_W * 1000);
-    fprintf("Simscape harvested power   = %.6f mW\n", single.Pload_avg * 1000);
-    fprintf("Difference                 = %.6f mW\n", ...
-        (paperOnly.Ph_W - single.Pload_avg) * 1000);
-    fprintf("Percent difference          = %.3f %%\n", ...
-        100 * (paperOnly.Ph_W - single.Pload_avg) / single.Pload_avg);
+if doNumOnly
+    fprintf("\n============================================================\n");
+    fprintf("INDEPENDENT PAPER-ONLY SEH PREDICTION\n");
+    fprintf("============================================================\n");
+    
+    paperOnly = predictSEH_paper_only( ...
+        L, R, C, Cp, VF_bridge, f, VSrc_eq_amp, Rload_single);
+    
+    printPaperOnlySummary(paperOnly);
+    
+    assignin("base", "seh_paper_only_result", paperOnly);
+    
+    % Optional comparison if you already ran Simscape and have "single"
+    if exist("single", "var") && isfield(single, "Pload_avg")
+        fprintf("\n===== COMPARISON TO SIMSCAPE =====\n");
+        fprintf("Paper-only harvested power = %.6f mW\n", paperOnly.Ph_W * 1000);
+        fprintf("Simscape harvested power   = %.6f mW\n", single.Pload_avg * 1000);
+        fprintf("Difference                 = %.6f mW\n", ...
+            (paperOnly.Ph_W - single.Pload_avg) * 1000);
+        fprintf("Percent difference          = %.3f %%\n", ...
+            100 * (paperOnly.Ph_W - single.Pload_avg) / single.Pload_avg);
+    end
 end
 
 %% ============================================================
@@ -224,7 +254,7 @@ fprintf("  seh_sweep_table in base workspace\n");
 function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     L, R, C, Cp, Crect, Rload, VF_bridge, ...
     f, stopTime, t_start_ss, maxStep)
-    global VSrc_eq_amp;
+    global VSrc_eq_amp, Li, Rsw, ;
 
     w = 2*pi*f;
     T = 1/f;
@@ -276,6 +306,13 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     simIn = simIn.setVariable("VSrc_eq_amp", VSrc_eq_amp);
     simIn = simIn.setVariable("f", f);
     simIn = simIn.setVariable("w", w);
+    simIn = simIn.setVariable("Li", Li);
+    simIn = simIn.setVariable("Rsw", Rsw);
+    simIn = simIn.setVariable("Tsw", Tsw);
+    simIn = simIn.setVariable("blankingTime", blankingTime);
+    simIn = simIn.setVariable("tEnable", tEnable);
+    simIn = simIn.setVariable("Ieps", Ieps);
+    simIn = simIn.setVariable("gamma", gamma);
 
     %% Run simulation
     simOut = sim(simIn);
