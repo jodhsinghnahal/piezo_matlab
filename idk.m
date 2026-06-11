@@ -1,12 +1,12 @@
 %% ============================================================
-% FULL SEH SIMSCAPE + PAPER-STYLE IMPEDANCE ANALYSIS
+% FULL SEH / P-SSHI SIMSCAPE + PAPER-STYLE IMPEDANCE ANALYSIS
 %
 % This script:
 % 1) Runs one detailed SEH simulation
 % 2) Extracts steady-state vp, ieq, Vstore
 % 3) Computes fundamental components
 % 4) Computes Zelec_sim = Vp,F / Ieq,F
-% 5) Computes paper SEH Zelec formula
+% 5) Computes paper SEH or P-SSHI Zelec formula
 % 6) Decomposes Zelec into Rd, Rh, XE
 % 7) Computes harvested power vs extracted power
 % 8) Runs an Rload sweep
@@ -27,7 +27,7 @@ clear; clc; close all;
 model = "simscape_model";
 
 % variant subsystem type (SEH or PSSHI)
-Type = "PSSHI";
+Type = "SEH";
 
 % set_param(bdroot, 'SimulationMode', 'Accelerator')
 
@@ -76,6 +76,9 @@ t_start_ss_single = 3.0;
 % Load sweep settings
 doSweep = false;
 
+% start with open (use to get OC voltage)
+openCircuit = 0;
+
 % Avoid going too high unless you allow very long simulations.
 % With Crect = 1e-6, Rload = 10 MOhm gives tau = 10 s.
 Rload_list = logspace(4, 7, 25);     % 10 kOhm to 10 MOhm
@@ -96,8 +99,29 @@ blankingTime = 0.25 / f;    % prevents repeated triggering near zero
 tEnable = 3 / f;            % delay switching until startup settles
 Ieps = 1e-7;                % current deadband for zero-cross detection
 
+% Paper P-SSHI inversion factor, Eq. 22: gamma = -exp(-pi/(2Q))
+% IMPORTANT: Rsw should be the TOTAL resistance in the Cp-Li switching loop
+%            (switch Ron + inductor ESR + wiring/other series resistance).
+Qsshi = sqrt(Li/Cp) / Rsw;
+gamma_psshi = -exp(-pi/(2*Qsshi));
+
+% Use gamma = 1 for SEH. SEH is the gamma = 1 special case of the
+% P-SSHI formulas in the Liang/Liao impedance paper.
+if strcmpi(string(Type), "SEH")
+    gamma = 1;
+else
+    gamma = gamma_psshi;
+end
+
+% Safe tag for workspace variable names, e.g., "PSSHI" -> "psshi".
+TypeTag = matlab.lang.makeValidName(char(lower(erase(string(Type), "-"))));
+
 % Solver max step for cleaner waveform/fundamental extraction
-maxStep = min(T/400, Tsw/10);
+if strcmpi(string(Type), "SEH")
+    maxStep = T/400;
+elseif strcmpi(string(Type), "PSSHI") || strcmpi(string(Type), "P-SSHI")
+    maxStep = min(T/400, Tsw/10);
+end
 
 %% ============================================================
 % LOAD MODEL
@@ -106,20 +130,52 @@ maxStep = min(T/400, Tsw/10);
 load_system(model);
 
 %% ============================================================
+% PAPER-ONLY NUMERICAL ANALYSIS, NO SIMSCAPE
+% ============================================================
+
+% This follows the paper method: choose a grid of normalized rectified
+% voltages, compute theta/Zelec/Rd/Rh/XE, substitute them into Eq. 42/43,
+% and numerically search for maximum harvested power.
+numPts = 3000;
+paperNum = paperNumericalSweepPEH(Type, L, R, C, Cp, VF_bridge, ...
+    VSrc_eq_amp, f, gamma, numPts);
+
+assignin("base", [TypeTag '_paper_num'], paperNum);
+assignin("base", [TypeTag '_paper_num_table'], paperNum.table);
+
+fprintf("\n===== PAPER-ONLY NUMERICAL %s RESULT =====\n", char(string(Type)));
+fprintf("gamma used = %.8f, Qsshi = %.4f\n", gamma, Qsshi);
+if ~isempty(paperNum.opt)
+    fprintf("Optimum Vtilde_rect = %.6f\n", paperNum.opt.Vtilde_rect);
+    fprintf("Optimum theta = %.6f rad = %.3f deg\n", ...
+        paperNum.opt.theta_rad, rad2deg(paperNum.opt.theta_rad));
+    fprintf("Predicted max harvested power Eq.42 = %.6f mW\n", ...
+        paperNum.opt.Ph_eq42_W*1000);
+    fprintf("Predicted extracted power Eq.43 at optimum = %.6f mW\n", ...
+        paperNum.opt.Pdelta_eq43_W*1000);
+else
+    warning("Paper-only numerical analysis produced no valid optimum.");
+end
+
+plotPaperNumericalPEH(paperNum);
+
+%% ============================================================
 % SINGLE DETAILED RUN
 % ============================================================
 
 fprintf("\n============================================================\n");
-fprintf("SINGLE DETAILED SEH RUN\n");
+fprintf("SINGLE DETAILED %s RUN\n", char(string(Type)));
 fprintf("============================================================\n");
 
 single = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     L, R, C, Cp, Crect, Rload_single, VF_bridge, VSrc_eq_amp, ...
-    f, stopTime_single, t_start_ss_single, maxStep);
+    f, stopTime_single, t_start_ss_single, maxStep, ...
+    Type, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
+    tEnable, Ieps, gamma, Qsshi);
 
 printSingleSummary(single);
 
-assignin("base", "seh_single_result", single);
+assignin("base", [TypeTag '_single_result'], single);
 
 %% ============================================================
 % SINGLE-RUN PLOTS
@@ -156,7 +212,9 @@ if doSweep
         try
             sweepResults(k) = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
                 L, R, C, Cp, Crect, Rload_k, VF_bridge, VSrc_eq_amp, ...
-                f, stopTime_k, t_start_ss_k, maxStep);
+                f, stopTime_k, t_start_ss_k, maxStep, ...
+                Type, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
+                tEnable, Ieps, gamma, Qsshi);
         catch ME
             warning("Sweep failed at Rload = %.4e ohm: %s", Rload_k, ME.message);
             sweepResults(k) = emptyResultStruct();
@@ -166,8 +224,8 @@ if doSweep
 
     sweepTable = resultsToTable(sweepResults);
 
-    assignin("base", "seh_sweep_results", sweepResults);
-    assignin("base", "seh_sweep_table", sweepTable);
+    assignin("base", [TypeTag '_sweep_results'], sweepResults);
+    assignin("base", [TypeTag '_sweep_table'], sweepTable);
 
     fprintf("\n============================================================\n");
     fprintf("SWEEP COMPLETE\n");
@@ -200,9 +258,9 @@ if doSweep
 end
 
 fprintf("\nSaved:\n");
-fprintf("  seh_single_result in base workspace\n");
-fprintf("  seh_sweep_results in base workspace\n");
-fprintf("  seh_sweep_table in base workspace\n");
+fprintf("  %s_single_result in base workspace\n", TypeTag);
+fprintf("  %s_paper_num and %s_paper_num_table in base workspace\n", TypeTag, TypeTag);
+fprintf("  %s_sweep_results and %s_sweep_table if doSweep=true\n", TypeTag, TypeTag);
 
 %% ============================================================
 % LOCAL FUNCTIONS
@@ -210,7 +268,9 @@ fprintf("  seh_sweep_table in base workspace\n");
 
 function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     L, R, C, Cp, Crect, Rload, VF_bridge, VSrc_eq_amp, ...
-    f, stopTime, t_start_ss, maxStep)
+    f, stopTime, t_start_ss, maxStep, ...
+    Type, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
+    tEnable, Ieps, gamma, Qsshi)
 
     w = 2*pi*f;
     T = 1/f;
@@ -228,6 +288,11 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     result.VSrc_eq_amp = VSrc_eq_amp;
     result.f = f;
     result.w = w;
+    result.Type = string(Type);
+    result.gamma = gamma;
+    result.Qsshi = Qsshi;
+    result.Li = Li;
+    result.Rsw = Rsw;
 
     %% Collect all model variables in one place
     params = struct( ...
@@ -235,7 +300,13 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
         'Rload', Rload, 'Crect', Crect, ...
         'VF_bridge', VF_bridge, ...
         'VSrc_eq_amp', VSrc_eq_amp, ...
-        'f', f, 'w', w);
+        'f', f, 'w', w, ...
+        'Type', string(Type), ...
+        'Li', Li, 'Rsw', Rsw, 'R_closed', R_closed, ...
+        'G_open', G_open, 'Threshold', Threshold, ...
+        'Tsw', Tsw, 'blankingTime', blankingTime, ...
+        'tEnable', tEnable, 'Ieps', Ieps, ...
+        'gamma', gamma, 'Qsshi', Qsshi);
 
     %% Simulation input
     simIn = Simulink.SimulationInput(model);
@@ -341,7 +412,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
 
     Vstore_avg = mean(vstore_ss, "omitnan");
 
-    %% Paper SEH values
+    %% Paper SEH / P-SSHI values at the Simscape operating point
     Voc_sim = I0 / (w * Cp);
     Vrect_sim = Vstore_avg + VF_bridge;
     Vtilde_sim = Vrect_sim / Voc_sim;
@@ -355,25 +426,22 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     Ph_eq42_auto = NaN;
     Pdelta_eq43_auto = NaN;
 
-    %% Equivalent source amplitude (Eq. 44)
+    %% Equivalent source amplitude estimated from the simulated fundamental, Eq. 44
     ZL  = 1j*w*L;
     ZC  = 1/(1j*w*C);
     ZCp = 1/(1j*w*Cp);
     Zmech = R + ZL + ZC;
     Veq_amp = abs(R + ZL + ZC + ZCp) / abs(ZCp) * Voc_sim;
 
-    if isfinite(Vtilde_sim) && Vtilde_sim > 0 && Vtilde_sim < 1
+    paperPoint = paperPointPEH(Type, w, Cp, Vtilde_sim, Vtilde_F, gamma);
 
-        theta_paper = acos(1 - 2*Vtilde_sim);
-        s = sin(theta_paper);
-        c = cos(theta_paper);
+    if paperPoint.valid
 
-        Zelec_paper = (1/(pi*w*Cp)) * (s^2 + 1j*(s*c - theta_paper));
-
-        % SEH impedance decomposition
-        Rd = (4/(pi*w*Cp)) * Vtilde_F * (1 - Vtilde_sim);
-        Rh = (4/(pi*w*Cp)) * (Vtilde_sim - Vtilde_F) * (1 - Vtilde_sim);
-        XE = (1/(pi*w*Cp)) * (s*c - theta_paper);
+        theta_paper = paperPoint.theta;
+        Zelec_paper = paperPoint.Zelec;
+        Rd = paperPoint.Rd;
+        Rh = paperPoint.Rh;
+        XE = paperPoint.XE;
 
         X_total = imag(Zmech) + XE;
         denom = X_total^2 + (R + Rd + Rh)^2;
@@ -398,18 +466,20 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     if isfinite(theta_paper)
 
         phi = mod(w*t_c + ieq_phase, 2*pi);
+        gamma_eff = gammaForType(Type, gamma);
 
         for kk = 1:length(phi)
             p = phi(kk);
 
+            % General SEH/P-SSHI Eq. 21. SEH is the special case gamma = 1.
             if p >= 0 && p < theta_paper
-                vp_paper(kk) = Voc_sim * (1 - cos(p)) - Vrect_sim;
+                vp_paper(kk) = Voc_sim * (1 - cos(p)) - gamma_eff * Vrect_sim;
 
             elseif p >= theta_paper && p < pi
                 vp_paper(kk) = Vrect_sim;
 
             elseif p >= pi && p < pi + theta_paper
-                vp_paper(kk) = Vrect_sim - Voc_sim * (1 + cos(p));
+                vp_paper(kk) = gamma_eff * Vrect_sim - Voc_sim * (1 + cos(p));
 
             else
                 vp_paper(kk) = -Vrect_sim;
@@ -487,7 +557,7 @@ end
 
 function printSingleSummary(r)
 
-    fprintf("\n===== Simscape SEH Results =====\n");
+    fprintf("\n===== Simscape %s Results =====\n", char(string(r.Type)));
     fprintf("Rload = %.6e ohm\n", r.Rload);
     fprintf("Average harvested/load power = %.6f mW\n", r.Pload_avg * 1000);
     fprintf("Average Vstore = %.6f V\n", r.Vstore_avg);
@@ -500,10 +570,11 @@ function printSingleSummary(r)
     fprintf("Fundamental vp amplitude = %.6f V\n", r.VpF_amp);
     fprintf("Current sign used = %+d\n", r.currentSign);
 
-    fprintf("\n===== Paper-Style SEH Estimates =====\n");
+    fprintf("\n===== Paper-Style %s Estimates =====\n", char(string(r.Type)));
     fprintf("Voc = I0/(wCp) = %.6f V\n", r.Voc);
     fprintf("Vtilde_rect = %.6f\n", r.Vtilde_rect);
     fprintf("Vtilde_F = %.6f\n", r.Vtilde_F);
+    fprintf("gamma = %.8f, Qsshi = %.4f\n", r.gamma, r.Qsshi);
 
     if isfinite(r.theta_paper)
         fprintf("theta_paper = %.6f rad = %.3f deg\n", ...
@@ -513,7 +584,7 @@ function printSingleSummary(r)
         fprintf("theta_sim_exact = %.6f rad = %.3f deg\n", ...
             r.theta_sim_exact, rad2deg(r.theta_sim_exact));
     else
-        fprintf("theta_paper = NaN because Vtilde_rect is outside (0,1)\n");
+        fprintf("theta_paper = NaN because Vtilde_rect is outside the valid range for this interface\n");
     end
 
     fprintf("\n===== Equivalent Electrical Impedance =====\n");
@@ -526,7 +597,7 @@ function printSingleSummary(r)
     fprintf("Normalized Zelec_paper: Re*wCp = %.6f, Im*wCp = %.6f\n", ...
         real(r.Zelec_paper)*r.w*r.Cp, imag(r.Zelec_paper)*r.w*r.Cp);
 
-    fprintf("\n===== SEH Impedance Decomposition =====\n");
+    fprintf("\n===== %s Impedance Decomposition =====\n", char(string(r.Type)));
     fprintf("Rd = %.6e ohm\n", r.Rd);
     fprintf("Rh = %.6e ohm\n", r.Rh);
     fprintf("XE = %.6e ohm\n", r.XE);
@@ -554,7 +625,7 @@ function plotSingleRun(r)
     plot(r.t_ss, r.vp_ss, "LineWidth", 1.2);
     grid on;
     ylabel("v_p (V)");
-    title("Steady-State Simscape SEH Signals");
+    title("Steady-State Simscape " + string(r.Type) + " Signals");
 
     nexttile;
     plot(r.t_ss, r.ieq_ss_eff, "LineWidth", 1.2);
@@ -589,7 +660,7 @@ function plotSingleRun(r)
     grid on;
     xlabel("Time within one cycle (s)");
     ylabel("Normalized amplitude");
-    title("Paper-Style SEH Waveform from Simscape");
+    title("Paper-Style " + string(r.Type) + " Waveform from Simscape");
     xlim([0, 1/r.f]);
 
     %% Plot 3: absolute one-cycle waveforms
@@ -611,7 +682,7 @@ function plotSingleRun(r)
 
     grid on;
     xlabel("Time within one cycle (s)");
-    title("One-Cycle Simscape vs Fundamental vs Paper SEH");
+    title("One-Cycle Simscape vs Fundamental vs Paper " + string(r.Type));
 
     if all(isfinite(r.vp_paper))
         legend("Simscape v_p", "v_{p,F}", "Ideal paper v_p", "i_{eq,F}", ...
@@ -655,7 +726,7 @@ function plotSweepResults(tbl, w, Cp)
     grid on;
     xlabel("$\tilde{V}_{rect} = V_{rect}/V_{oc}$", 'Interpreter', 'latex');
     ylabel("Power (mW)");
-    title("SEH Power vs Normalized Rectified Voltage");
+    title("Power vs Normalized Rectified Voltage");
     legend("Simscape harvested/load", ...
            "Paper Eq. 42 harvested", ...
            "Paper Eq. 43 extracted", ...
@@ -669,7 +740,7 @@ function plotSweepResults(tbl, w, Cp)
     grid on;
     xlabel("$\tilde{V}_{rect}$", 'Interpreter', 'latex');
     ylabel("Ohms");
-    title("SEH Equivalent Impedance Decomposition");
+    title("Equivalent Impedance Decomposition");
     legend("R_d dissipative", "R_h harvesting", "X_E reactive", ...
         "Location", "best");
 
@@ -763,11 +834,216 @@ function tbl = resultsToTable(res)
         rows(k).VpF_amp_V            = r.VpF_amp;
         rows(k).Veq_amp_V            = r.Veq_amp;
         rows(k).currentSign          = r.currentSign;
+        rows(k).gamma                = r.gamma;
+        rows(k).Qsshi                = r.Qsshi;
+        rows(k).Type                 = string(r.Type);
         rows(k).stopTime_s           = r.stopTime;
         rows(k).t_start_ss_s         = r.t_start_ss;
     end
 
     tbl = struct2table(rows);
+end
+
+
+function gamma_eff = gammaForType(Type, gamma)
+    if strcmpi(string(Type), "SEH")
+        gamma_eff = 1;
+    elseif strcmpi(string(Type), "PSSHI") || strcmpi(string(Type), "P-SSHI")
+        gamma_eff = gamma;
+    else
+        error("Unsupported Type '%s'. Use 'SEH' or 'PSSHI'.", char(string(Type)));
+    end
+end
+
+function p = paperPointPEH(Type, w, Cp, Vtilde_rect, Vtilde_F, gamma)
+    % Computes paper impedance values for SEH or P-SSHI at one Vtilde point.
+    % P-SSHI formulas use Eq. 23/24 and Eq. 31/32/33.
+    % SEH is recovered by setting gamma = 1.
+
+    p.valid = false;
+    p.theta = NaN;
+    p.Zelec = NaN + 1j*NaN;
+    p.Rd = NaN;
+    p.Rh = NaN;
+    p.XE = NaN;
+
+    gamma_eff = gammaForType(Type, gamma);
+    k = 1 + gamma_eff;
+
+    if ~(isfinite(Vtilde_rect) && isfinite(Vtilde_F) && isfinite(gamma_eff))
+        return;
+    end
+    if Vtilde_rect <= 0 || k <= 0
+        return;
+    end
+
+    % Eq. 24: cos(theta) = 1 - (1 + gamma)*Vtilde_rect
+    % For SEH with gamma=1, this becomes Eq. 13.
+    arg = 1 - k*Vtilde_rect;
+    if arg < -1 || arg > 1
+        return;
+    end
+
+    theta = acos(arg);
+    s = sin(theta);
+    c = cos(theta);
+
+    scale = 1/(pi*w*Cp);
+
+    % Eq. 23, electrical equivalent impedance for P-SSHI.
+    % With gamma=1, this collapses to the SEH Eq. 16.
+    ReTerm = (1 - c) * (4/(1 + gamma_eff) - 1 + c);
+    ImTerm = s*c - theta;
+    Zelec = scale * (ReTerm + 1j*ImTerm);
+
+    % Eq. 31-33, impedance decomposition for P-SSHI.
+    % With gamma=1, these collapse to SEH Eq. 27-29.
+    Rd = scale * (2*Vtilde_F*(2 - Vtilde_rect*(1 + gamma_eff)) + ...
+                  Vtilde_rect^2*(1 - gamma_eff^2));
+    Rh = 2*scale * (Vtilde_rect - Vtilde_F) * ...
+                   (2 - Vtilde_rect*(1 + gamma_eff));
+    XE = scale * (s*c - theta);
+
+    p.valid = true;
+    p.theta = theta;
+    p.Zelec = Zelec;
+    p.Rd = Rd;
+    p.Rh = Rh;
+    p.XE = XE;
+end
+
+function num = paperNumericalSweepPEH(Type, L, R, C, Cp, VF_bridge, Veq_amp, f, gamma, numPts)
+    % Independent paper-only numerical analysis.
+    % It sweeps Vtilde_rect, computes the paper impedance decomposition,
+    % then uses Eq. 42 and Eq. 43 to predict harvested/extracted power.
+
+    w = 2*pi*f;
+    gamma_eff = gammaForType(Type, gamma);
+    Vtilde_max = 2/(1 + gamma_eff);       % from -1 <= cos(theta) <= 1
+
+    % Avoid exactly zero and exactly max because theta endpoints can be singular.
+    Vtilde_grid = linspace(1e-5*Vtilde_max, 0.99999*Vtilde_max, numPts).';
+
+    ZL = 1j*w*L;
+    ZC = 1/(1j*w*C);
+    Zmech = R + ZL + ZC;
+
+    rows = repmat(struct( ...
+        'valid', false, 'Vtilde_rect', NaN, 'Vtilde_F', NaN, 'theta_rad', NaN, ...
+        'Ph_eq42_W', NaN, 'Pdelta_eq43_W', NaN, ...
+        'Rd_ohm', NaN, 'Rh_ohm', NaN, 'XE_ohm', NaN, ...
+        'Re_Zelec_ohm', NaN, 'Im_Zelec_ohm', NaN, ...
+        'Voc_V', NaN, 'I0_A', NaN), numPts, 1);
+
+    for k = 1:numPts
+        Vt = Vtilde_grid(k);
+
+        % Vtilde_F = VF/Voc. Voc depends on current, which depends on the total
+        % impedance. This small scalar solve makes the diode drop self-consistent.
+        if VF_bridge == 0
+            VtF = 0;
+        else
+            obj = @(vf) diodeFixedPointError(vf, Type, w, Cp, Vt, gamma, ...
+                                             VF_bridge, Veq_amp, Zmech);
+            upper = max(Vt, 1e-9);       % require Vstore >= 0, so Vtilde_F <= Vtilde_rect
+            VtF = fminbnd(obj, 0, upper);
+        end
+
+        p = paperPointPEH(Type, w, Cp, Vt, VtF, gamma);
+        if ~p.valid || p.Rh < 0
+            continue;
+        end
+
+        X_total = imag(Zmech) + p.XE;
+        denom = X_total^2 + (R + p.Rd + p.Rh)^2;
+
+        Ph = 0.5 * Veq_amp^2 * p.Rh / denom;                 % Eq. 42
+        Pdelta = 0.5 * Veq_amp^2 * (p.Rh + p.Rd) / denom;    % Eq. 43
+
+        I0 = Veq_amp / sqrt(denom);
+        Voc = I0 / (w*Cp);
+
+        rows(k).valid = true;
+        rows(k).Vtilde_rect = Vt;
+        rows(k).Vtilde_F = VtF;
+        rows(k).theta_rad = p.theta;
+        rows(k).Ph_eq42_W = Ph;
+        rows(k).Pdelta_eq43_W = Pdelta;
+        rows(k).Rd_ohm = p.Rd;
+        rows(k).Rh_ohm = p.Rh;
+        rows(k).XE_ohm = p.XE;
+        rows(k).Re_Zelec_ohm = real(p.Zelec);
+        rows(k).Im_Zelec_ohm = imag(p.Zelec);
+        rows(k).Voc_V = Voc;
+        rows(k).I0_A = I0;
+    end
+
+    tbl = struct2table(rows);
+    valid = tbl.valid & isfinite(tbl.Ph_eq42_W);
+
+    num.Type = string(Type);
+    num.gamma = gamma_eff;
+    num.Veq_amp = Veq_amp;
+    num.Vtilde_max = Vtilde_max;
+    num.table = tbl;
+
+    if any(valid)
+        idxValid = find(valid);
+        [~, localIdx] = max(tbl.Ph_eq42_W(valid));
+        idxOpt = idxValid(localIdx);
+        num.opt = tbl(idxOpt, :);
+    else
+        num.opt = table();
+        warning("No valid paper numerical points for %s.", char(string(Type)));
+    end
+end
+
+function err = diodeFixedPointError(Vtilde_F, Type, w, Cp, Vtilde_rect, gamma, ...
+                                    VF_bridge, Veq_amp, Zmech)
+    p = paperPointPEH(Type, w, Cp, Vtilde_rect, Vtilde_F, gamma);
+    if ~p.valid
+        err = Inf;
+        return;
+    end
+
+    Ztotal = Zmech + p.Zelec;
+    I0 = Veq_amp / abs(Ztotal);
+    Voc = I0 / (w*Cp);
+    target = VF_bridge / Voc;
+
+    err = (Vtilde_F - target)^2;
+end
+
+function plotPaperNumericalPEH(num)
+    if isempty(num.table) || isempty(num.opt)
+        return;
+    end
+
+    tbl = num.table;
+    valid = tbl.valid & isfinite(tbl.Ph_eq42_W);
+    if ~any(valid)
+        return;
+    end
+
+    figure("Name", "Paper-Only Numerical Power - " + string(num.Type));
+    plot(tbl.Vtilde_rect(valid), tbl.Ph_eq42_W(valid)*1000, "LineWidth", 1.5); hold on;
+    plot(tbl.Vtilde_rect(valid), tbl.Pdelta_eq43_W(valid)*1000, "--", "LineWidth", 1.2);
+    plot(num.opt.Vtilde_rect, num.opt.Ph_eq42_W*1000, "o", "MarkerSize", 8, "LineWidth", 1.5);
+    grid on;
+    xlabel("$\tilde{V}_{rect}$", "Interpreter", "latex");
+    ylabel("Power (mW)");
+    title("Paper-Only Numerical " + string(num.Type) + " Prediction");
+    legend("Harvested Eq. 42", "Extracted Eq. 43", "Max harvested", "Location", "best");
+
+    figure("Name", "Paper-Only Impedance Decomposition - " + string(num.Type));
+    plot(tbl.Vtilde_rect(valid), tbl.Rd_ohm(valid), "LineWidth", 1.3); hold on;
+    plot(tbl.Vtilde_rect(valid), tbl.Rh_ohm(valid), "LineWidth", 1.3);
+    plot(tbl.Vtilde_rect(valid), tbl.XE_ohm(valid), "LineWidth", 1.3);
+    grid on;
+    xlabel("$\tilde{V}_{rect}$", "Interpreter", "latex");
+    ylabel("Ohms");
+    title("Paper-Only " + string(num.Type) + " Rd/Rh/XE");
+    legend("R_d", "R_h", "X_E", "Location", "best");
 end
 
 function result = emptyResultStruct()
@@ -785,6 +1061,11 @@ function result = emptyResultStruct()
     result.VSrc_eq_amp = NaN;
     result.f = NaN;
     result.w = NaN;
+    result.Type = "";
+    result.gamma = NaN;
+    result.Qsshi = NaN;
+    result.Li = NaN;
+    result.Rsw = NaN;
 
     result.t = [];
     result.vp = [];
