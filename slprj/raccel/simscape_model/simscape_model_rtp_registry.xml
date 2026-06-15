@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MF0 version="1.1" packageUris="http://schema.mathworks.com/mf0/slsa_mm_param_rtp/R2023a">
+  <slsa.mm.param.rtp.RtpLocation type="slsa.mm.param.rtp.RtpLocation" uuid="240581e4-12e5-4292-b262-cf6c6d95f932">
+    <parameter type="slsa.mm.param.rtp.Parameter" uuid="adc92f8b-54e6-4a59-9d3f-8935365f4e48"/>
+    <segmentIndex>1</segmentIndex>
+    <valueIndices>1</valueIndices>
+    <valueIndices>1</valueIndices>
+  </slsa.mm.param.rtp.RtpLocation>
+  <slsa.mm.param.rtp.VariableId type="slsa.mm.param.rtp.VariableId" uuid="286a6874-4bb2-43c5-87cf-aeb591d3cedc">
+    <workspaceName>global-workspace</workspaceName>
+    <name>w</name>
+    <parameter type="slsa.mm.param.rtp.Parameter" uuid="adc92f8b-54e6-4a59-9d3f-8935365f4e48"/>
+  </slsa.mm.param.rtp.VariableId>
+  <slsa.mm.param.rtp.Parameter type="slsa.mm.param.rtp.Parameter" uuid="adc92f8b-54e6-4a59-9d3f-8935365f4e48">
+    <id type="slsa.mm.param.rtp.VariableId" uuid="286a6874-4bb2-43c5-87cf-aeb591d3cedc"/>
+    <rtpLocation type="slsa.mm.param.rtp.RtpLocation" uuid="240581e4-12e5-4292-b262-cf6c6d95f932"/>
+  </slsa.mm.param.rtp.Parameter>
+  <slsa.mm.param.rtp.RtpLocation type="slsa.mm.param.rtp.RtpLocation" uuid="889ade89-e114-4800-9f88-039d3a6735ee">
+    <parameter type="slsa.mm.param.rtp.Parameter" uuid="e7001b4c-ae54-4c3a-8d2e-66a294a9e6e9"/>
+    <segmentIndex>3</segmentIndex>
+    <valueIndices>3</valueIndices>
+    <valueIndices>3</valueIndices>
+  </slsa.mm.param.rtp.RtpLocation>
+  <slsa.mm.param.rtp.RtpLocation type="slsa.mm.param.rtp.RtpLocation" uuid="bf015adc-f035-49eb-b8c7-9c6b492dd009">
+    <parameter type="slsa.mm.param.rtp.Parameter" uuid="de107261-18b6-4d0e-8a5a-bb883e1a2e55"/>
+    <segmentIndex>1</segmentIndex>
+    <valueIndices>0</valueIndices>
+    <valueIndices>0</valueIndices>
+  </slsa.mm.param.rtp.RtpLocation>
+  <slsa.mm.param.rtp.VariableId type="slsa.mm.param.rtp.VariableId" uuid="c10c4cd9-2b47-42c9-819e-014d0599528d">
+    <workspaceName>global-workspace</workspaceName>
+    <name>VSrc_eq_amp</name>
+    <parameter type="slsa.mm.param.rtp.Parameter" uuid="de107261-18b6-4d0e-8a5a-bb883e1a2e55"/>
+  </slsa.mm.param.rtp.VariableId>
+  <slsa.mm.param.rtp.BlockParameterId type="slsa.mm.param.rtp.BlockParameterId" uuid="f6d43946-03f1-4a63-aac0-0795a9a12c0d">
+    <blockPath>simscape_model/Subsystem2/P-SSHI/Monostable Flip-Flop/Discrete/Constant</blockPath>
+    <name>Value</name>
+    <parameter type="slsa.mm.param.rtp.Parameter" uuid="e7001b4c-ae54-4c3a-8d2e-66a294a9e6e9"/>
+  </slsa.mm.param.rtp.BlockParameterId>
+  <slsa.mm.param.rtp.Parameter type="slsa.mm.param.rtp.Parameter" uuid="de107261-18b6-4d0e-8a5a-bb883e1a2e55">
+    <id type="slsa.mm.param.rtp.VariableId" uuid="c10c4cd9-2b47-42c9-819e-014d0599528d"/>
+    <rtpLocation type="slsa.mm.param.rtp.RtpLocation" uuid="bf015adc-f035-49eb-b8c7-9c6b492dd009"/>
+  </slsa.mm.param.rtp.Parameter>
+  <slsa.mm.param.rtp.RtpLocation type="slsa.mm.param.rtp.RtpLocation" uuid="4d274a16-b909-455e-b22a-fdb273f5619a">
+    <parameter type="slsa.mm.param.rtp.StructParameter" uuid="cd17e4fb-38e0-4837-97f8-7488b9b58523"/>
+    <valueIndices>0</valueIndices>
+    <valueIndices>0</valueIndices>
+  </slsa.mm.param.rtp.RtpLocation>
+  <slsa.mm.param.rtp.VariableId type="slsa.mm.param.rtp.VariableId" uuid="f55e506e-bc63-4f0f-a5d9-0830e3c84e22">
+    <workspaceName>global-workspace</workspaceName>
+    <name>FrmWksBus_2277297056879121903_TU</name>
+    <parameter type="slsa.mm.param.rtp.StructParameter" uuid="cd17e4fb-38e0-4837-97f8-7488b9b58523"/>
+  </slsa.mm.param.rtp.VariableId>
+  <slsa.mm.param.rtp.Parameter type="slsa.mm.param.rtp.Parameter" uuid="e7001b4c-ae54-4c3a-8d2e-66a294a9e6e9">
+    <id type="slsa.mm.param.rtp.BlockParameterId" uuid="f6d43946-03f1-4a63-aac0-0795a9a12c0d"/>
+    <rtpLocation type="slsa.mm.param.rtp.RtpLocation" uuid="889ade89-e114-4800-9f88-039d3a6735ee"/>
+  </slsa.mm.param.rtp.Parameter>
+  <slsa.mm.param.rtp.StructParameter type="slsa.mm.param.rtp.StructParameter" uuid="cd17e4fb-38e0-4837-97f8-7488b9b58523">
+    <id type="slsa.mm.param.rtp.VariableId" uuid="f55e506e-bc63-4f0f-a5d9-0830e3c84e22"/>
+    <rtpLocation type="slsa.mm.param.rtp.RtpLocation" uuid="4d274a16-b909-455e-b22a-fdb273f5619a"/>
+  </slsa.mm.param.rtp.StructParameter>
+  <slsa.mm.param.rtp.ModelMetadata type="slsa.mm.param.rtp.ModelMetadata" uuid="390ea5e3-bbfb-45df-93cf-7c218dda59f2">
+    <modelName>simscape_model</modelName>
+  </slsa.mm.param.rtp.ModelMetadata>
+</MF0>

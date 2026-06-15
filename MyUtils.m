@@ -191,6 +191,103 @@ classdef MyUtils
             end
         end
         
+        function oc = measureOpenCircuitVoc(model, vpName, ...
+                L, R, C, Cp, Crect, Rload, VF_bridge, VSrc_eq_amp, ...
+                f, stopTime, t_start_ss, maxStep, ...
+                Type, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
+                tEnable, Ieps, gamma, Qsshi)
+
+            ocControl  = 0;   % open-circuit measurement
+            openCircuit  = [0, ocControl];
+
+            w = 2*pi*f;
+            T = 1/f;
+
+            params = struct( ...
+                'L', L, 'R', R, 'C', C, 'Cp', Cp, ...
+                'Rload', Rload, 'Crect', Crect, ...
+                'VF_bridge', VF_bridge, ...
+                'VSrc_eq_amp', VSrc_eq_amp, ...
+                'f', f, 'w', w, ...
+                'Type', string(Type), ...
+                'Li', Li, 'Rsw', Rsw, 'R_closed', R_closed, ...
+                'G_open', G_open, 'Threshold', Threshold, ...
+                'Tsw', Tsw, 'blankingTime', blankingTime, ...
+                'tEnable', tEnable, 'Ieps', Ieps, ...
+                'gamma', gamma, 'Qsshi', Qsshi, ...
+                'openCircuit', openCircuit);
+
+            simIn = Simulink.SimulationInput(model);
+
+            simIn = simIn.setModelParameter("StopTime", num2str(stopTime));
+            simIn = simIn.setModelParameter("ReturnWorkspaceOutputs", "on");
+            simIn = simIn.setModelParameter("LimitDataPoints", "off");
+            simIn = simIn.setModelParameter("Decimation", "1");
+
+            if ~isempty(maxStep) && isfinite(maxStep) && maxStep > 0
+                simIn = simIn.setModelParameter("MaxStep", num2str(maxStep));
+            end
+
+            fn = fieldnames(params);
+
+            for i = 1:numel(fn)
+                assignin("base", fn{i}, params.(fn{i}));
+                simIn = simIn.setVariable(fn{i}, params.(fn{i}));
+            end
+
+            simOut = sim(simIn);
+
+            [t_vp, vp] = MyUtils.readSignalDirect(simOut, vpName);
+            [t_vp, vp] = MyUtils.cleanTimeSignal(t_vp, vp);
+
+            t = t_vp(:);
+            vp = vp(:);
+
+            idx_ss = t >= t_start_ss;
+
+            if sum(idx_ss) < 20
+                fprintf("Actual final t = %.6f, points after ss = %d\n", t(end), sum(idx_ss));
+                error("Not enough steady-state data for open-circuit Voc measurement.");
+            end
+
+            t_ss = t(idx_ss);
+            vp_ss = vp(idx_ss);
+
+            t2 = t_ss(end);
+            t1 = t2 - T;
+
+            idx_cycle = t >= t1 & t <= t2;
+
+            if sum(idx_cycle) < 30
+                error("Not enough points in final open-circuit cycle.");
+            end
+
+            t_c = t(idx_cycle);
+            vp_c = vp(idx_cycle);
+
+            [vp_F, Voc_amp, Voc_phase] = MyUtils.fundamentalComponent(t_c, vp_c, f);
+
+            oc.t = t;
+            oc.vp = vp;
+            oc.t_ss = t_ss;
+            oc.vp_ss = vp_ss;
+
+            oc.t_cycle = t_c - t_c(1);
+            oc.vp_cycle = vp_c;
+            oc.vp_F = vp_F;
+
+            oc.Voc_amp = Voc_amp;
+            oc.Voc_phase = Voc_phase;
+            oc.Voc_pp = max(vp_c) - min(vp_c);
+            oc.Voc_half_pp = 0.5 * oc.Voc_pp;
+
+            oc.openCircuit = openCircuit;
+            oc.f = f;
+            oc.w = w;
+            oc.stopTime = stopTime;
+            oc.t_start_ss = t_start_ss;
+        end
+
         function theta_est = estimateThetaFromRectCurrent(t, irect, ieq_phase, f)
         
             theta_est = NaN;

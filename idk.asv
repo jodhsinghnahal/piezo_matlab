@@ -2,7 +2,7 @@
 % FULL SEH / P-SSHI SIMSCAPE + PAPER-STYLE IMPEDANCE ANALYSIS
 %
 % This script:
-% 1) Runs one detailed SEH simulation
+% 1) Runs one detailed SEH simulation (first get piezo open circuit voltage)
 % 2) Extracts steady-state vp, ieq, Vstore
 % 3) Computes fundamental components
 % 4) Computes Zelec_sim = Vp,F / Ieq,F
@@ -13,9 +13,6 @@
 % 9) Finds optimum harvested power
 % 10) Plots impedance plane and power curves
 %
-% IMPORTANT:
-% - Your model must output vp_sim, vstore_sim, and ieq_sim.
-% - Current direction is automatically corrected if Re(Zelec) is negative.
 % ============================================================
 
 clear; clc; close all;
@@ -29,12 +26,13 @@ model = "simscape_model";
 % variant subsystem type (SEH or PSSHI)
 Type = "SEH";
 
-% set_param(bdroot, 'SimulationMode', 'Accelerator')
+set_param(model, 'SimulationMode', 'Accelerator')
 
 vpName     = "vp_sim";
 vstoreName = "vstore_sim";
 ieqName    = "ieq_sim";
 irectName = "irect_sim";
+ipName = "ip_sim";
 
 % Equivalent electrical-domain mechanical parameters
 % From Liang & Liao experimental setup / equivalent model
@@ -76,21 +74,18 @@ t_start_ss_single = 3.0;
 % Load sweep settings
 doSweep = false;
 
-% start with open (use to get OC voltage)
-openCircuit = [0, 0];
-
 % Avoid going too high unless you allow very long simulations.
 % With Crect = 1e-6, Rload = 10 MOhm gives tau = 10 s.
-Rload_list = logspace(4, 7, 25);     % 10 kOhm to 10 MOhm
+Rload_list = logspace(4, 7, 20);     % 10 kOhm to 10 MOhm
 
 minStopTime = 5.0;
-tauMultiplier = 8.0;                 % simulate about 8 RC time constants
+tauMultiplier = 5.0;                 % simulate about 5 RC time constants
 maxStopTime = 90.0;                  % safety cap
 ssStartFraction = 0.75;              % use last 25% as steady-state
 
 %% P-SSHI settings
 Li = 47e-3;                 % SSHI inductor, H
-Rsw = 10;                   % switching-loop resistance, ohm
+% Rsw = 10;                   % switching-loop resistance, ohm
 R_closed = 0.54;            %IRL510 on resistance
 G_open   = 1e-8;
 Threshold = 0.5;
@@ -102,10 +97,12 @@ Ieps = 1e-7;                % current deadband for zero-cross detection
 % Paper P-SSHI inversion factor, Eq. 22: gamma = -exp(-pi/(2Q))
 % IMPORTANT: Rsw should be the TOTAL resistance in the Cp-Li switching loop
 %            (switch Ron + inductor ESR + wiring/other series resistance).
-paper_gamma = 0.7;          % table 1
-Q_needed = -1 * pi / (2 * log(paper_gamma));
+paper_gamma = -0.7;          % table 1
+Q_needed = -1 * pi / (2 * log(-1 * paper_gamma));
+Rloop_total = sqrt(Li/Cp) / Q_needed;
+Rsw = Rloop_total - R_closed;
 
-Qsshi = sqrt(Li/Cp) / Rsw;
+Qsshi = sqrt(Li/Cp) / Rloop_total;
 gamma_psshi = -exp(-pi/(2*Qsshi));
 
 % Use gamma = 1 for SEH. SEH is the gamma = 1 special case of the
@@ -133,6 +130,27 @@ end
 load_system(model);
 
 %% ============================================================
+% MEASURE ACTUAL OPEN-CIRCUIT VOC
+% ============================================================
+
+fprintf("\n============================================================\n");
+fprintf("MEASURING ACTUAL OPEN-CIRCUIT TRANSDUCER VOLTAGE\n");
+fprintf("============================================================\n");
+
+Voc_oc = MyUtils.measureOpenCircuitVoc(model, vpName, ...
+    L, R, C, Cp, Crect, Rload_single, VF_bridge, VSrc_eq_amp, ...
+    f, stopTime_single, t_start_ss_single, maxStep, ...
+    Type, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
+    tEnable, Ieps, gamma, Qsshi);
+
+openCircuitVoltage = Voc_oc.Voc_amp;
+
+fprintf("\n===== ACTUAL OPEN-CIRCUIT MEASUREMENT =====\n");
+fprintf("Measured open-circuit Voc fundamental amplitude = %.6f V\n", openCircuitVoltage);
+fprintf("Measured open-circuit Voc peak-to-peak = %.6f V\n", Voc_oc.Voc_pp);
+fprintf("Measured open-circuit Voc half peak-to-peak = %.6f V\n", Voc_oc.Voc_half_pp);
+
+%% ============================================================
 % SINGLE DETAILED RUN
 % ============================================================
 
@@ -140,11 +158,11 @@ fprintf("\n============================================================\n");
 fprintf("SINGLE DETAILED %s RUN\n", char(string(Type)));
 fprintf("============================================================\n");
 
-single = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
+single = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipName, ...
     L, R, C, Cp, Crect, Rload_single, VF_bridge, VSrc_eq_amp, ...
     f, stopTime_single, t_start_ss_single, maxStep, ...
     Type, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
-    tEnable, Ieps, gamma, Qsshi, openCircuit);
+    tEnable, Ieps, gamma, Qsshi, openCircuitVoltage);
 
 printSingleSummary(single);
 
@@ -153,6 +171,8 @@ assignin("base", [TypeTag '_single_result'], single);
 %% ============================================================
 % SINGLE-RUN PLOTS
 % ============================================================
+
+plotOpenCircuitVoc(Voc_oc);
 
 plotSingleRun(single);
 
@@ -183,11 +203,11 @@ if doSweep
             k, N, Rload_k, tauRC, stopTime_k);
 
         try
-            sweepResults(k) = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
+            sweepResults(k) = runOneSEH(model, vpName, vstoreName, ieqName, irectName,ipName, ...
                 L, R, C, Cp, Crect, Rload_k, VF_bridge, VSrc_eq_amp, ...
                 f, stopTime_k, t_start_ss_k, maxStep, ...
                 Type, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
-                tEnable, Ieps, gamma, Qsshi, openCircuit);
+                tEnable, Ieps, gamma, Qsshi, openCircuitVoltage);
         catch ME
             warning("Sweep failed at Rload = %.4e ohm: %s", Rload_k, ME.message);
             sweepResults(k) = emptyResultStruct();
@@ -232,18 +252,20 @@ end
 
 fprintf("\nSaved:\n");
 fprintf("  %s_single_result in base workspace\n", TypeTag);
-fprintf("  %s_paper_num and %s_paper_num_table in base workspace\n", TypeTag, TypeTag);
 fprintf("  %s_sweep_results and %s_sweep_table if doSweep=true\n", TypeTag, TypeTag);
 
 %% ============================================================
 % LOCAL FUNCTIONS
 % ============================================================
 
-function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
+function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipName, ...
     L, R, C, Cp, Crect, Rload, VF_bridge, VSrc_eq_amp, ...
     f, stopTime, t_start_ss, maxStep, ...
     Type, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
-    tEnable, Ieps, gamma, Qsshi, openCircuit)
+    tEnable, Ieps, gamma, Qsshi, openCircuitVoltage)
+
+    runControl = 1;   % normal harvesting run (closed circuit)
+    openCircuit = [0, runControl];
 
     w = 2*pi*f;
     T = 1/f;
@@ -264,7 +286,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     result.Type = string(Type);
     result.gamma = gamma;
     result.Qsshi = Qsshi;
-    result.openCircuit = openCircuit;
+    result.openCircuitVoltage = openCircuitVoltage;
     result.Li = Li;
     result.Rsw = Rsw;
 
@@ -287,7 +309,9 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
 
     simIn = simIn.setModelParameter("StopTime", num2str(stopTime));
     simIn = simIn.setModelParameter("ReturnWorkspaceOutputs", "on");
-
+    simIn = simIn.setModelParameter("LimitDataPoints", "off");
+    simIn = simIn.setModelParameter("Decimation", "1");
+    
     if ~isempty(maxStep) && isfinite(maxStep) && maxStep > 0
         currentMaxStep = get_param(model, 'MaxStep');
         disp(['The current MaxStep is: ', currentMaxStep]);
@@ -315,7 +339,10 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
 
     [t_ir, irect] = MyUtils.readSignalDirect(simOut, irectName);
     [t_ir, irect] = MyUtils.cleanTimeSignal(t_ir, irect);
-    
+
+    [t_ip, irect] = MyUtils.readSignalDirect(simOut, ipName);
+    [t_ip, irect] = MyUtils.cleanTimeSignal(t_ir, irect);
+
     % Use vp time as common time base
     t = t_vp(:);
     vp = vp(:);
@@ -328,6 +355,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     idx_ss = t >= t_start_ss;
 
     if sum(idx_ss) < 20
+        fprintf("Actual final t = %.6f, points after ss = %d\n", t(end), sum(idx_ss));
         error("Not enough steady-state data. Lower t_start_ss or increase StopTime.");
     end
 
@@ -405,7 +433,10 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     ZC  = 1/(1j*w*C);
     ZCp = 1/(1j*w*Cp);
     Zmech = R + ZL + ZC;
-    Veq_amp = abs(R + ZL + ZC + ZCp) / abs(ZCp) * Voc_sim;
+    % Veq_amp = abs(R + ZL + ZC + ZCp) / abs(ZCp) * Voc_sim;
+
+    % Use measured open circuit voltage instead of eqn calculated Voc_sim
+    Veq_amp = abs(R + ZL + ZC + ZCp) / abs(ZCp) * openCircuitVoltage;
 
     paperPoint = paperPointPEH(Type, w, Cp, Vtilde_sim, Vtilde_F, gamma);
 
@@ -474,6 +505,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     result.vstore = vstore;
     result.ieq_raw = ieq;
     result.ieq_eff = currentSign * ieq;
+    result.irect = irect;
 
     result.t_ss = t_ss;
     result.vp_ss = vp_ss;
@@ -486,6 +518,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ...
     result.vstore_cycle = vstore_c;
     result.ieq_cycle_raw = ieq_c;
     result.ieq_cycle_eff = ieq_c_eff;
+    result.irect_cycle = irect_c;
 
     result.vp_F = vp_F;
     result.ieq_F = ieq_F;
@@ -546,6 +579,7 @@ function printSingleSummary(r)
 
     fprintf("\n===== Paper-Style %s Estimates =====\n", char(string(r.Type)));
     fprintf("Voc = I0/(wCp) = %.6f V\n", r.Voc);
+    fprintf("Measured actual open-circuit Voc = %.6f V\n", r.openCircuitVoltage);
     fprintf("Vtilde_rect = %.6f\n", r.Vtilde_rect);
     fprintf("Vtilde_F = %.6f\n", r.Vtilde_F);
     fprintf("gamma = %.8f, Qsshi = %.4f\n", r.gamma, r.Qsshi);
@@ -583,10 +617,27 @@ function printSingleSummary(r)
     fprintf("Simscape harvested/load power Vstore^2/Rload = %.6f mW\n", r.Pload_avg*1000);
     fprintf("Time-domain extracted power mean(vp*ieq_eff) = %.6f mW\n", r.Pdelta_time*1000);
     fprintf("Fundamental extracted power 0.5*Re(Zelec)*I0^2 = %.6f mW\n", r.Pdelta_fundamental*1000);
-    fprintf("Eq. 42 harvested power using auto Veq = %.6f mW\n", r.Ph_eq42_auto*1000);
-    fprintf("Eq. 43 extracted power using auto Veq = %.6f mW\n", r.Pdelta_eq43_auto*1000);
+    fprintf("Eq. 42 harvested power = %.6f mW\n", r.Ph_eq42_auto*1000);
+    fprintf("Eq. 43 extracted power = %.6f mW\n", r.Pdelta_eq43_auto*1000);
     fprintf("Predicted dissipated power = %.6f mW\n", ...
         (r.Pdelta_eq43_auto - r.Ph_eq42_auto)*1000);
+
+    fprintf("\n===== Equivalent Source =====\n");
+    fprintf("Veq_amp inferred from measured open-circuit Voc = %.6f V\n", r.Veq_amp);
+    fprintf("Ideal VSrc_eq_amp used in model source = %.6f V\n", r.VSrc_eq_amp);
+end
+
+function plotOpenCircuitVoc(oc)
+    figure("Name", "Measured Open-Circuit Voc");
+    
+    plot(oc.t_cycle, oc.vp_cycle, "LineWidth", 1.4); hold on;
+    plot(oc.t_cycle, oc.vp_F, "--", "LineWidth", 1.6);
+    
+    grid on;
+    xlabel("Time within final cycle (s)");
+    ylabel("Open-circuit v_p (V)");
+    title("Measured Actual Open-Circuit Transducer Voltage");
+    legend("Open-circuit v_p", "Fundamental component", "Location", "best");
 end
 
 function plotSingleRun(r)
@@ -618,7 +669,7 @@ function plotSingleRun(r)
     xlabel("Time (s)");
 
     %% Plot 2: normalized paper-style waveform comparison
-    figure("Name", "Single Run: Paper-Style SEH Waveform Comparison");
+    figure("Name", "Single Run: Paper-Style Waveform Comparison");
 
     plot(r.t_cycle, MyUtils.normalizeShape(r.ieq_F), "--", "LineWidth", 1.5); hold on;
     plot(r.t_cycle, MyUtils.normalizeShape(r.vp_cycle), "LineWidth", 1.5);
@@ -647,11 +698,14 @@ function plotSingleRun(r)
     if all(isfinite(r.vp_paper))
         plot(r.t_cycle, r.vp_paper, "-.", "LineWidth", 1.4);
     end
+    plot(r.t_cycle, r.vstore_cycle, "-.g", "LineWidth", 1.4);
 
     ylabel("Voltage (V)");
 
     yyaxis right;
     plot(r.t_cycle, r.ieq_F, "--", "LineWidth", 1.4);
+    plot(r.t_cycle, r.ieq_cycle_eff, "-.r", "LineWidth", 1.4);
+    plot(r.t_cycle, r.irect_cycle, "-.y", "LineWidth", 1.4);
     ylabel("Current (A)");
 
     grid on;
@@ -659,10 +713,10 @@ function plotSingleRun(r)
     title("One-Cycle Simscape vs Fundamental vs Paper " + string(r.Type));
 
     if all(isfinite(r.vp_paper))
-        legend("Simscape v_p", "v_{p,F}", "Ideal paper v_p", "i_{eq,F}", ...
+        legend("Simscape v_p", "v_{p,F}", "Ideal paper v_p", "v_{store}", "i_{eq,F}", "i_{eq}", "i_{rect}", ...
             "Location", "best");
     else
-        legend("Simscape v_p", "v_{p,F}", "i_{eq,F}", ...
+        legend("Simscape v_p", "v_{p,F}", "v_{store}", "i_{eq,F}", "i_{eq}", "i_{rect}", ...
             "Location", "best");
     end
 end
@@ -681,6 +735,7 @@ function plotSweepResults(tbl, w, Cp)
     semilogx(tbl.Rload_ohm(valid), tbl.Pload_avg_W(valid)*1000, "o-", "LineWidth", 1.5); hold on;
     semilogx(tbl.Rload_ohm(valid), tbl.Pdelta_time_W(valid)*1000, "s--", "LineWidth", 1.2);
     semilogx(tbl.Rload_ohm(valid), tbl.Pdelta_fundamental_W(valid)*1000, "d:", "LineWidth", 1.2);
+    semilogx(tbl.Rload_ohm(valid), tbl.Ph_eq42_auto_W(valid)*1000, "x--", "LineWidth", 1.2);
     grid on;
     xlabel("R_{load} (\Omega)");
     ylabel("Power (mW)");
@@ -688,6 +743,7 @@ function plotSweepResults(tbl, w, Cp)
     legend("Harvested/load: Vstore^2/Rload", ...
            "Extracted time-domain: mean(v_p i_{eq})", ...
            "Extracted fundamental", ...
+           "Paper Eq. 42", ...
            "Location", "best");
 
     %% Plot harvested power vs Vtilde_rect
@@ -707,7 +763,7 @@ function plotSweepResults(tbl, w, Cp)
            "Location", "best");
 
     %% Plot impedance components vs Vtilde
-    figure("Name", "Sweep: SEH Impedance Decomposition");
+    figure("Name", "Sweep: Impedance Decomposition");
     plot(tbl.Vtilde_rect(validV), tbl.Rd_ohm(validV), "o-", "LineWidth", 1.3); hold on;
     plot(tbl.Vtilde_rect(validV), tbl.Rh_ohm(validV), "s-", "LineWidth", 1.3);
     plot(tbl.Vtilde_rect(validV), tbl.XE_ohm(validV), "d-", "LineWidth", 1.3);
@@ -734,7 +790,7 @@ function plotSweepResults(tbl, w, Cp)
     xlabel("Re[Z_{elec}] \omega C_p");
     ylabel("Im[Z_{elec}] \omega C_p");
     title("Electrical Part Equivalent Impedance Plane");
-    legend("Simscape fundamental", "Paper SEH formula", ...
+    legend("Simscape fundamental", "Paper formula", ...
         "Location", "best");
 
     %% Re and Im comparison
@@ -810,6 +866,7 @@ function tbl = resultsToTable(res)
         rows(k).currentSign          = r.currentSign;
         rows(k).gamma                = r.gamma;
         rows(k).Qsshi                = r.Qsshi;
+        rows(k).openCircuitVoltage          = r.openCircuitVoltage;
         rows(k).Type                 = string(r.Type);
         rows(k).stopTime_s           = r.stopTime;
         rows(k).t_start_ss_s         = r.t_start_ss;
@@ -887,14 +944,13 @@ function p = paperPointPEH(Type, w, Cp, Vtilde_rect, Vtilde_F, gamma)
 end
 
 function result = emptyResultStruct()
-
     result.valid = false;
 
     result.L = NaN;
     result.R = NaN;
     result.C = NaN;
     result.Cp = NaN;
-    
+
     result.Rload = NaN;
     result.Crect = NaN;
     result.VF_bridge = NaN;
@@ -904,6 +960,7 @@ function result = emptyResultStruct()
     result.Type = "";
     result.gamma = NaN;
     result.Qsshi = NaN;
+    result.openCircuitVoltage = [];
     result.Li = NaN;
     result.Rsw = NaN;
 
@@ -918,19 +975,20 @@ function result = emptyResultStruct()
     result.vstore_ss = [];
     result.ieq_ss_raw = [];
     result.ieq_ss_eff = [];
+    result.irect = [];
 
     result.t_cycle = [];
     result.vp_cycle = [];
     result.vstore_cycle = [];
     result.ieq_cycle_raw = [];
     result.ieq_cycle_eff = [];
+    result.irect_cycle = [];
 
     result.vp_F = [];
     result.ieq_F = [];
     result.vp_paper = [];
 
     result.currentSign = NaN;
-
     result.VpF_amp = NaN;
     result.VpF_phase = NaN;
     result.I0 = NaN;
@@ -953,7 +1011,6 @@ function result = emptyResultStruct()
 
     result.Zelec_sim = NaN + 1j*NaN;
     result.Zelec_paper = NaN + 1j*NaN;
-
     result.Rd = NaN;
     result.Rh = NaN;
     result.XE = NaN;
@@ -965,4 +1022,3 @@ function result = emptyResultStruct()
     result.stopTime = NaN;
     result.t_start_ss = NaN;
 end
-
