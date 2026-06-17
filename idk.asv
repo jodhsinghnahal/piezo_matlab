@@ -15,7 +15,9 @@
 %
 % ============================================================
 
+tic; % Starts the stopwatch timer
 clear; clc; close all;
+Simulink.sdi.clear; 
 
 %% ============================================================
 % USER SETTINGS
@@ -25,8 +27,7 @@ model = "simscape_model";
 
 % variant subsystem type (SEH or PSSHI)
 Type = "SEH";
-
-set_param(model, 'SimulationMode', 'Accelerator')
+set_param(model, 'SimulationMode', 'auto');
 
 vpName     = "vp_sim";
 vstoreName = "vstore_sim";
@@ -34,38 +35,58 @@ ieqName    = "ieq_sim";
 irectName = "irect_sim";
 ipName = "ip_sim";
 
-% Equivalent electrical-domain mechanical parameters
-% From Liang & Liao experimental setup / equivalent model
-L  = 31e3;        % H
-R  = 1e6;         % ohm
-C  = 448e-12;     % F
-Cp = 34.69e-9;    % F
+% Excitation
+f = 42;                         % Hz
+w = 2*pi*f;
+T = 1/f;
+
+% Single-run load
+Rload_single = 1e6;
 
 % Rectifier / storage / load
 Crect = 1e-6;     % F
+
+% 1 for Liang & Liao paper, 2 for Underwater
+paper = 1;
+
+if paper == 1
+    % Equivalent electrical-domain mechanical parameters
+    % From Liang & Liao experimental setup / equivalent model
+    L  = 31e3;        % H
+    R  = 1e6;         % ohm
+    C  = 448e-12;     % F
+    Cp = 34.69e-9;    % F
+    
+    ae = 4.75*10^-4;
+    Y_rms_accel = 10;
+    y_peak_accel = sqrt(2) * Y_rms_accel;
+    VSrc_eq_amp = L * ae * y_peak_accel;
+end
+
+% Underwater equivalent model:
+% PZT example from Underwater derivation table
+d33 = 650e-12;                  % C/N
+Lm  = 2.00e-12;                 % m/N
+Cm  = 3.10e-3;                  % kg
+Rm  = 2.50e-7;                  % m/(N*s)
+C0  = 3.36e-7;                  % F
+den = 1 + (w*Cm*Rm)^2;          % Req, Ceq, Leq from Eq. (8)-(10)
+R  = Rm / (d33^2 * w^2 * den);       % Req
+C  = d33^2 * den / (Rm^2 * Cm);      % Ceq
+L  = Lm / (d33^2 * w^2);                 % Leq
+Cp = C0;                                 % Liang Cp becomes Underwater C0
+
+Fm_input = 1.0;                          % N peak, REPLACE THIS
+
+% Underwater Eq. (6): Veq = Fm/(j*w*d33*Ysh)
+Ysh = 1/Rm + 1j*w*Cm;
+Veq_complex = Fm_input / (1j*w*d33*Ysh);
+VSrc_eq_amp = abs(Veq_complex);
 
 % If each diode is about 0.5 V, total bridge drop is about 1.0 V.
 Vd_single = 0.5;
 VF_bridge = 2 * Vd_single;       % total conducting bridge drop, V
 r_single = 0.3; % the on resistance
-% a1 = 0.04;
-% v1 = 0.8;
-% a2 = 6.00;
-% v2 = 1.26;
-% ron = (v2 - v1) / (a2 - a1);
-% vf = v1 - a1 * ron;
-
-% Excitation
-f = 42;                         % Hz
-w = 2*pi*f;
-T = 1/f;
-ae = 4.75*10^-4;
-Y_rms_accel = 10;
-y_peak_accel = sqrt(2) * Y_rms_accel;
-VSrc_eq_amp = L * ae * y_peak_accel;
-
-% Single-run load
-Rload_single = 1e6;
 
 % Single-run timing
 stopTime_single = 5.0;
@@ -340,8 +361,8 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     [t_ir, irect] = MyUtils.readSignalDirect(simOut, irectName);
     [t_ir, irect] = MyUtils.cleanTimeSignal(t_ir, irect);
 
-    [t_ip, irect] = MyUtils.readSignalDirect(simOut, ipName);
-    [t_ip, irect] = MyUtils.cleanTimeSignal(t_ir, irect);
+    [t_ip, ip] = MyUtils.readSignalDirect(simOut, ipName);
+    [t_ip, ip] = MyUtils.cleanTimeSignal(t_ip, ip);
 
     % Use vp time as common time base
     t = t_vp(:);
@@ -350,6 +371,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     vstore = interp1(t_vs, vstore, t, "linear", "extrap");
     ieq = interp1(t_i, ieq, t, "linear", "extrap");
     irect = interp1(t_ir, irect, t, "linear", "extrap");
+    ip = interp1(t_ip, ip, t, "linear", "extrap");
 
     %% Steady-state region
     idx_ss = t >= t_start_ss;
@@ -363,10 +385,11 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     vp_ss = vp(idx_ss);
     vstore_ss = vstore(idx_ss);
     ieq_ss = ieq(idx_ss);
+    ip_ss = ip(idx_ss);
 
     %% One final steady-state cycle
     t2 = t_ss(end);
-    t1 = t2 - T;
+    t1 = t2 - 2*T;
 
     idx_cycle = t >= t1 & t <= t2;
 
@@ -379,6 +402,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     vstore_c = vstore(idx_cycle);
     ieq_c = ieq(idx_cycle);
     irect_c = irect(idx_cycle);
+    ip_c = ip(idx_cycle);
 
     tau = t_c - t_c(1);
 
@@ -519,6 +543,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     result.ieq_cycle_raw = ieq_c;
     result.ieq_cycle_eff = ieq_c_eff;
     result.irect_cycle = irect_c;
+    result.ip_cycle = ip_c;
 
     result.vp_F = vp_F;
     result.ieq_F = ieq_F;
@@ -706,6 +731,7 @@ function plotSingleRun(r)
     plot(r.t_cycle, r.ieq_F, "--", "LineWidth", 1.4);
     plot(r.t_cycle, r.ieq_cycle_eff, "-.r", "LineWidth", 1.4);
     plot(r.t_cycle, r.irect_cycle, "-.y", "LineWidth", 1.4);
+    plot(r.t_cycle, r.ip_cycle, "-.w", "LineWidth", 1.4);
     ylabel("Current (A)");
 
     grid on;
@@ -714,10 +740,10 @@ function plotSingleRun(r)
 
     if all(isfinite(r.vp_paper))
         legend("Simscape v_p", "v_{p,F}", "Ideal paper v_p", "v_{store}", "i_{eq,F}", "i_{eq}", "i_{rect}", ...
-            "Location", "best");
+            "i_{p}", "Location", "best");
     else
         legend("Simscape v_p", "v_{p,F}", "v_{store}", "i_{eq,F}", "i_{eq}", "i_{rect}", ...
-            "Location", "best");
+            "i_{p}", "Location", "best");
     end
 end
 
@@ -983,6 +1009,7 @@ function result = emptyResultStruct()
     result.ieq_cycle_raw = [];
     result.ieq_cycle_eff = [];
     result.irect_cycle = [];
+    result.ip_cycle = [];
 
     result.vp_F = [];
     result.ieq_F = [];
@@ -1022,3 +1049,6 @@ function result = emptyResultStruct()
     result.stopTime = NaN;
     result.t_start_ss = NaN;
 end
+
+totalTime = toc; % Stops timer and saves the elapsed time in seconds
+fprintf('Total execution time: %.4f seconds.\n', totalTime);

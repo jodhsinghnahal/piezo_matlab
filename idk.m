@@ -27,7 +27,7 @@ model = "simscape_model";
 
 % variant subsystem type (SEH or PSSHI)
 Type = "SEH";
-set_param(model, 'SimulationMode', 'auto');
+% set_param(model, 'SimulationMode', 'auto');
 
 vpName     = "vp_sim";
 vstoreName = "vstore_sim";
@@ -35,38 +35,74 @@ ieqName    = "ieq_sim";
 irectName = "irect_sim";
 ipName = "ip_sim";
 
-% Equivalent electrical-domain mechanical parameters
-% From Liang & Liao experimental setup / equivalent model
-L  = 31e3;        % H
-R  = 1e6;         % ohm
-C  = 448e-12;     % F
-Cp = 34.69e-9;    % F
+% Excitation
+f = 42;                         % Hz
+w = 2*pi*f;
+T = 1/f;
+
+% Single-run load
+Rload_single = 1e6;
 
 % Rectifier / storage / load
 Crect = 1e-6;     % F
+
+% 1 for Liang & Liao paper, 2 for Underwater
+paper = 1;
+
+if paper == 1
+    % Equivalent electrical-domain mechanical parameters
+    % From Liang & Liao experimental setup / equivalent model
+    L  = 31e3;        % H
+    R  = 1e6;         % ohm
+    C  = 448e-12;     % F
+    Cp = 34.69e-9;    % F
+    
+    ae = 4.75*10^-4;
+    Y_rms_accel = 10;
+    y_peak_accel = sqrt(2) * Y_rms_accel;
+    VSrc_eq_amp = L * ae * y_peak_accel;
+elseif paper == 2
+    % Underwater equivalent model:
+    % PZT example from Underwater derivation table
+    d33 = 650e-12;                  % C/N
+    Lm  = 2.00e-12;                 % m/N
+    Cm  = 3.10e-3;                  % kg
+    Rm  = 2.50e-7;                  % m/(N*s)
+    C0  = 3.36e-7;                  % F
+    den = 1 + (w*Cm*Rm)^2;          % Req, Ceq, Leq from Eq. (8)-(10)
+    R  = Rm / (d33^2 * w^2 * den);       % Req
+    C  = d33^2 * den / (Rm^2 * Cm);      % Ceq
+    L  = Lm / (d33^2 * w^2);                 % Leq
+    Cp = C0;                                 % Liang Cp becomes Underwater C0
+    Ysh = 1/Rm + 1j*w*Cm;
+
+    % Fm_input = 1000.0;                          % N peak, REPLACE THIS
+
+    A = 2e-3;              % m^2
+    rho_w = 1000;          % kg/m^3
+    c_w = 1500;            % m/s
+    Zw = rho_w*c_w;
+
+    SPL_dB  = 250;                        % incident SPL, dB re 1 uPa  <-- YOUR DIAL
+    p_ref   = 1e-6;                       % reference pressure, Pa
+    pw_rms  = p_ref * 10^(SPL_dB/20);     % incident pressure, Pa (rms)
+    pw_amp = sqrt(2) * pw_rms;           % peak pressure
+
+    % pw_amp = 10000000.0;          % Pa peak, replace this
+    % simple first approximation: open-circuit electrical load
+    Zel = 1/(1j*w*C0);
+    Zm_in = 1 / (Ysh + 1/(1j*w*Lm + d33^2*w^2*Zel));
+    Fm_input = A/(1 + A*Zw*Zm_in) * pw_amp;
+
+    % Underwater Eq. (6): Veq = Fm/(j*w*d33*Ysh)
+    Veq_complex = Fm_input / (1j*w*d33*Ysh);
+    VSrc_eq_amp = abs(Veq_complex);
+end
 
 % If each diode is about 0.5 V, total bridge drop is about 1.0 V.
 Vd_single = 0.5;
 VF_bridge = 2 * Vd_single;       % total conducting bridge drop, V
 r_single = 0.3; % the on resistance
-% a1 = 0.04;
-% v1 = 0.8;
-% a2 = 6.00;
-% v2 = 1.26;
-% ron = (v2 - v1) / (a2 - a1);
-% vf = v1 - a1 * ron;
-
-% Excitation
-f = 42;                         % Hz
-w = 2*pi*f;
-T = 1/f;
-ae = 4.75*10^-4;
-Y_rms_accel = 10;
-y_peak_accel = sqrt(2) * Y_rms_accel;
-VSrc_eq_amp = L * ae * y_peak_accel;
-
-% Single-run load
-Rload_single = 1e6;
 
 % Single-run timing
 stopTime_single = 5.0;
