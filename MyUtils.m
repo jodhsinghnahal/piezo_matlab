@@ -197,8 +197,8 @@ classdef MyUtils
                 Type, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
                 tEnable, Ieps, gamma, Qsshi)
 
-            ocControl  = 0;   % open-circuit measurement
-            openCircuit  = [0, ocControl];
+            ocControl = 0;   % open-circuit measurement
+            openCircuit = [0, ocControl];
 
             w = 2*pi*f;
             T = 1/f;
@@ -217,7 +217,10 @@ classdef MyUtils
                 'gamma', gamma, 'Qsshi', Qsshi, ...
                 'openCircuit', openCircuit);
 
+
+            fprintf("MEASURING \n");
             simIn = Simulink.SimulationInput(model);
+            fprintf("MEASURING 2\n");
 
             simIn = simIn.setModelParameter("StopTime", num2str(stopTime));
             simIn = simIn.setModelParameter("ReturnWorkspaceOutputs", "on");
@@ -235,7 +238,10 @@ classdef MyUtils
                 simIn = simIn.setVariable(fn{i}, params.(fn{i}));
             end
 
+            fprintf("MEASURING 3\n");
+
             simOut = sim(simIn);
+            fprintf("MEASURING 4\n");
 
             [t_vp, vp] = MyUtils.readSignalDirect(simOut, vpName);
             [t_vp, vp] = MyUtils.cleanTimeSignal(t_vp, vp);
@@ -286,6 +292,7 @@ classdef MyUtils
             oc.w = w;
             oc.stopTime = stopTime;
             oc.t_start_ss = t_start_ss;
+            fprintf("MEASURING 5\n");
         end
 
         function theta_est = estimateThetaFromRectCurrent(t, irect, ieq_phase, f)
