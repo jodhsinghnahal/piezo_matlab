@@ -47,57 +47,53 @@ Rload_single = 1e6;
 % Rectifier / storage / load
 Crect = 1e-6;     % F
 
-% 1 for Liang & Liao paper, 2 for Underwater
-paper = 1;
+%% Equivalent electrical-domain transducer model
+% Set true to use the underwater-acoustic equivalent circuit paper:
+%   Zeq = Req + 1/(j*w*Ceq) + j*w*Leq, in parallel with Cp
+%   Req/Ceq/Leq from Underwater Energy Harvesting Eq. (9)-(11)
+%   VSrc_eq_amp = |Veq| from Eq. (6), driven by acoustic pressure amplitude.
+%
+% Set false to keep the old Liang/Liao beam example values.
+useUnderwaterPaperModel = true;
 
-if paper == 1
-    % Equivalent electrical-domain mechanical parameters
-    % From Liang & Liao experimental setup / equivalent model
+if useUnderwaterPaperModel
+    uwMaterial = "PZT";          % "PZT" or "PVDF"
+    uwArea_m2 = 2e-3;            % paper uses 2e-3 or 20e-3 m^2 for PZT
+    SPL_dB = 220;  p_ref = 1e-6;            % your dial, dB re 1 uPa
+    pw_rms = p_ref * 10^(SPL_dB/20);
+    uwPressureAmp_Pa = sqrt(2) * pw_rms;      % peak acoustic pressure amplitude, Pa
+    % harvested power scales ~ p_w^2
+
+    uw = MyUtils.underwaterPaperEquivalent(uwMaterial, uwArea_m2, uwPressureAmp_Pa, f);
+
+    L  = uw.Leq;                 % H
+    R  = uw.Req;                 % ohm
+    C  = uw.Ceq;                 % F
+    Cp = uw.Cp;                  % F
+    VSrc_eq_amp = abs(uw.Veq_phasor);  % peak electrical source amplitude, V
+
+    fprintf("\n===== UNDERWATER PAPER EQUIVALENT CIRCUIT =====\n");
+    fprintf("Material = %s, A = %.4e m^2, p_w,pk = %.4g Pa\n", ...
+        uw.material, uw.A, uw.pw_amp);
+    fprintf("Req = %.6e ohm\n", R);
+    fprintf("Ceq = %.6e F\n", C);
+    fprintf("Leq = %.6e H\n", L);
+    fprintf("Cp  = %.6e F\n", Cp);
+    fprintf("|Veq| = %.6e V\n", VSrc_eq_amp);
+    fprintf("|Voc,piezo| from divider = %.6e V\n", uw.Voc_piezo_amp);
+    fprintf("Approx factor |Veq|/p_w = %.6e V/Pa\n", abs(uw.Veq_phasor)/uw.pw_amp);
+else
+    % Original Liang/Liao experimental setup / equivalent model
     L  = 31e3;        % H
     R  = 1e6;         % ohm
     C  = 448e-12;     % F
     Cp = 34.69e-9;    % F
-    
+
     ae = 4.75*10^-4;
     Y_rms_accel = 10;
     y_peak_accel = sqrt(2) * Y_rms_accel;
     VSrc_eq_amp = L * ae * y_peak_accel;
-elseif paper == 2
-    % Underwater equivalent model:
-    % PZT example from Underwater derivation table
-    d33 = 650e-12;                  % C/N
-    Lm  = 2.00e-12;                 % m/N
-    Cm  = 3.10e-3;                  % kg
-    Rm  = 2.50e-7;                  % m/(N*s)
-    C0  = 3.36e-7;                  % F
-    den = 1 + (w*Cm*Rm)^2;          % Req, Ceq, Leq from Eq. (8)-(10)
-    R  = Rm / (d33^2 * w^2 * den);       % Req
-    C  = d33^2 * den / (Rm^2 * Cm);      % Ceq
-    L  = Lm / (d33^2 * w^2);                 % Leq
-    Cp = C0;                                 % Liang Cp becomes Underwater C0
-    Ysh = 1/Rm + 1j*w*Cm;
-
-    % Fm_input = 1000.0;                          % N peak, REPLACE THIS
-
-    A = 2e-3;              % m^2
-    rho_w = 1000;          % kg/m^3
-    c_w = 1500;            % m/s
-    Zw = rho_w*c_w;
-
-    SPL_dB  = 250;                        % incident SPL, dB re 1 uPa  <-- YOUR DIAL
-    p_ref   = 1e-6;                       % reference pressure, Pa
-    pw_rms  = p_ref * 10^(SPL_dB/20);     % incident pressure, Pa (rms)
-    pw_amp = sqrt(2) * pw_rms;           % peak pressure
-
-    % pw_amp = 10000000.0;          % Pa peak, replace this
-    % simple first approximation: open-circuit electrical load
-    Zel = 1/(1j*w*C0);
-    Zm_in = 1 / (Ysh + 1/(1j*w*Lm + d33^2*w^2*Zel));
-    Fm_input = A/(1 + A*Zw*Zm_in) * pw_amp;
-
-    % Underwater Eq. (6): Veq = Fm/(j*w*d33*Ysh)
-    Veq_complex = Fm_input / (1j*w*d33*Ysh);
-    VSrc_eq_amp = abs(Veq_complex);
+    uw = [];
 end
 
 % If each diode is about 0.5 V, total bridge drop is about 1.0 V.
@@ -110,7 +106,7 @@ stopTime_single = 5.0;
 t_start_ss_single = 3.0;
 
 % Load sweep settings
-doSweep = true;
+doSweep = false;
 
 % Avoid going too high unless you allow very long simulations.
 % With Crect = 1e-6, Rload = 10 MOhm gives tau = 10 s.
@@ -164,6 +160,10 @@ end
 % Safe tag for workspace variable names, e.g., "PSSHI" -> "psshi".
 TypeTag = matlab.lang.makeValidName(char(lower(erase(string(Type), "-"))));
 
+if useUnderwaterPaperModel
+    assignin("base", "uw_paper_equivalent", uw);
+end
+
 % Solver max step for cleaner waveform/fundamental extraction
 if strcmpi(string(Type), "SEH")
     maxStep = T/400;
@@ -203,8 +203,11 @@ if measureOC
     fprintf("Measured open-circuit Voc half peak-to-peak = %.6f V\n", Voc_oc.Voc_half_pp);
 
     plotOpenCircuitVoc(Voc_oc);
-else 
-    openCircuitVoltage = 19.956714;
+else
+    Zseries_old = R + 1j*w*L + 1/(1j*w*C);
+    ZCp_old = 1/(1j*w*Cp);
+
+    openCircuitVoltage = abs(VSrc_eq_amp * ZCp_old / (Zseries_old + ZCp_old));
 end
 
 %% ============================================================
@@ -308,6 +311,11 @@ fprintf("\nSaved:\n");
 fprintf("  %s_single_result in base workspace\n", TypeTag);
 fprintf("  %s_sweep_results and %s_sweep_table if doSweep=true\n", TypeTag, TypeTag);
 
+totalTime = toc; % Stops timer and saves the elapsed time in seconds
+fprintf('Total execution time: %.4f seconds.\n', totalTime);
+
+set_param(model, "FastRestart", "off");
+
 %% ============================================================
 % LOCAL FUNCTIONS
 % ============================================================
@@ -373,8 +381,8 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     simIn = simIn.setModelParameter("Decimation", "5");
 
     if ~isempty(maxStep) && isfinite(maxStep) && maxStep > 0
-        currentMaxStep = get_param(model, 'MaxStep');
-        disp(['The current MaxStep is: ', currentMaxStep]);
+        % currentMaxStep = get_param(model, 'MaxStep');
+        % disp(['The current MaxStep is: ', currentMaxStep]);
         simIn = simIn.setModelParameter("MaxStep", num2str(maxStep));
     end
 
@@ -493,6 +501,20 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     Vrect_sim = Vstore_avg + VF_bridge;
     Vtilde_sim = Vrect_sim / Voc_sim;
     Vtilde_F = VF_bridge / Voc_sim;
+
+    %% Underwater paper Section 4.5 simplified full-wave rectifier result
+    % Eq. (29): Vrect = (I0*Rload + pi*Vd)/(pi + w*Cp*Rload)
+    % where Vrect = Vs + Vd. This is for the rectifier-only SEH baseline,
+    % not for P-SSHI switching.
+    Vrect_eq29 = NaN;
+    Vs_eq29 = NaN;
+    Pload_eq29 = NaN;
+    if strcmpi(string(Type), "SEH")
+        rect_eq29 = MyUtils.underwaterRectifierEq29(I0, w, Cp, Rload, VF_bridge);
+        Vrect_eq29 = rect_eq29.Vrect;
+        Vs_eq29 = rect_eq29.Vs;
+        Pload_eq29 = rect_eq29.Pload;
+    end
 
     theta_paper = NaN;
     Zelec_paper = NaN + 1j*NaN;
@@ -636,6 +658,10 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     result.Ph_eq42_auto = Ph_eq42_auto;
     result.Pdelta_eq43_auto = Pdelta_eq43_auto;
 
+    result.Vrect_eq29 = Vrect_eq29;
+    result.Vs_eq29 = Vs_eq29;
+    result.Pload_eq29 = Pload_eq29;
+
     result.stopTime = stopTime;
     result.t_start_ss = t_start_ss;
  
@@ -699,6 +725,10 @@ function printSingleSummary(r)
     fprintf("Fundamental extracted power 0.5*Re(Zelec)*I0^2 = %.6f mW\n", r.Pdelta_fundamental*1000);
     fprintf("Eq. 42 harvested power = %.6f mW\n", r.Ph_eq42_auto*1000);
     fprintf("Eq. 43 extracted power = %.6f mW\n", r.Pdelta_eq43_auto*1000);
+    fprintf("Underwater Eq. 29 Vrect = %.6f V, Vs = %.6f V\n", ...
+        r.Vrect_eq29, r.Vs_eq29);
+    fprintf("Underwater Eq. 29 harvested/load power = %.6f mW\n", ...
+        r.Pload_eq29*1000);
     fprintf("Predicted dissipated power = %.6f mW\n", ...
         (r.Pdelta_eq43_auto - r.Ph_eq42_auto)*1000);
 
@@ -822,6 +852,7 @@ function plotSweepResults(tbl, w, Cp)
     semilogx(tbl.Rload_ohm(valid), tbl.Pdelta_fundamental_W(valid)*1000, "d:", "LineWidth", 1.2);
     semilogx(tbl.Rload_ohm(valid), tbl.Ph_eq42_auto_W(valid)*1000, "x--", "LineWidth", 1.2);
     semilogx(tbl.Rload_ohm(valid), tbl.Pdelta_eq43_auto_W(valid)*1000, "d:", "LineWidth", 1.2);
+    semilogx(tbl.Rload_ohm(valid), tbl.Pload_eq29_W(valid)*1000, "^--", "LineWidth", 1.2);
     grid on;
     xlabel("R_{load} (\Omega)");
     ylabel("Power (mW)");
@@ -831,6 +862,7 @@ function plotSweepResults(tbl, w, Cp)
            "Extracted fundamental", ...
            "Paper Eq. 42", ...
            "Paper Eq. 43", ...
+           "Underwater Eq. 29", ...
            "Location", "best");
 
     %% Plot harvested power vs Vtilde_rect
@@ -841,6 +873,7 @@ function plotSweepResults(tbl, w, Cp)
     plot(tbl.Vtilde_rect(validV), tbl.Ph_eq42_auto_W(validV)*1000, "s--", "LineWidth", 1.2);
     plot(tbl.Vtilde_rect(validV), tbl.Pdelta_eq43_auto_W(validV)*1000, "d:", "LineWidth", 1.2);
     plot(tbl.Vtilde_rect(validV), tbl.Pdelta_fundamental_W(validV)*1000, "d:", "LineWidth", 1.2);
+    plot(tbl.Vtilde_rect(validV), tbl.Pload_eq29_W(validV)*1000, "^--", "LineWidth", 1.2);
     grid on;
     xlabel("$\tilde{V}_{rect} = V_{rect}/V_{oc}$", 'Interpreter', 'latex');
     ylabel("Power (mW)");
@@ -849,6 +882,7 @@ function plotSweepResults(tbl, w, Cp)
            "Paper Eq. 42 harvested", ...
            "Paper Eq. 43 extracted", ...
            "Simscape extracted", ...
+           "Underwater Eq. 29", ...
            "Location", "best");
 
     %% Plot impedance components vs Vtilde
@@ -943,6 +977,9 @@ function tbl = resultsToTable(res)
         rows(k).Pdelta_fundamental_W = r.Pdelta_fundamental;
         rows(k).Ph_eq42_auto_W       = r.Ph_eq42_auto;
         rows(k).Pdelta_eq43_auto_W   = r.Pdelta_eq43_auto;
+        rows(k).Vrect_eq29_V         = r.Vrect_eq29;
+        rows(k).Vs_eq29_V            = r.Vs_eq29;
+        rows(k).Pload_eq29_W         = r.Pload_eq29;
         rows(k).Re_Zelec_sim_ohm     = real(r.Zelec_sim);
         rows(k).Im_Zelec_sim_ohm     = imag(r.Zelec_sim);
         rows(k).Re_Zelec_paper_ohm   = real(r.Zelec_paper);
@@ -964,7 +1001,6 @@ function tbl = resultsToTable(res)
 
     tbl = struct2table(rows);
 end
-
 
 function gamma_eff = gammaForType(Type, gamma)
     if strcmpi(string(Type), "SEH")
@@ -1111,11 +1147,10 @@ function result = emptyResultStruct()
     result.Ph_eq42_auto = NaN;
     result.Pdelta_eq43_auto = NaN;
 
+    result.Vrect_eq29 = NaN;
+    result.Vs_eq29 = NaN;
+    result.Pload_eq29 = NaN;
+
     result.stopTime = NaN;
     result.t_start_ss = NaN;
 end
-
-totalTime = toc; % Stops timer and saves the elapsed time in seconds
-fprintf('Total execution time: %.4f seconds.\n', totalTime);
-
-set_param(model, "FastRestart", "off");

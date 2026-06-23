@@ -365,5 +365,122 @@ classdef MyUtils
                 theta_est = NaN;
             end
         end
+        
+        function uw = underwaterPaperEquivalent(material, A, pw_amp, f)
+            % Underwater Energy Harvesting paper, Eq. (9)-(11) and Eq. (6).
+            % Returns the electrical RLC equivalent in Fig. 5.
+            %
+            % Inputs:
+            %   material  = "PZT" or "PVDF"
+            %   A         = transducer area, m^2
+            %   pw_amp    = peak acoustic pressure amplitude, Pa
+            %   f         = excitation frequency, Hz
+        
+            w = 2*pi*f;
+            eps0 = 8.8541878128e-12;     % F/m
+            Zw = 1.5e6;                  % Pa*s/m, characteristic impedance of water
+        
+            material = upper(string(material));
+        
+            if material == "PZT"
+                h = 200e-6;
+                E3 = 5e10;
+                rho = 7.8e3;
+                epsr = 3.8e3;
+                d33 = 650e-12;
+                c = 4000;
+            elseif material == "PVDF"
+                h = 100e-6;
+                E3 = 2.5e9;
+                rho = 1.78e3;
+                epsr = 12.5;
+                d33 = 30e-12;
+                c = 2250;
+            else
+                error("Unsupported material '%s'. Use 'PZT' or 'PVDF'.", material);
+            end
+        
+            % Mechanical/acoustic quantities from Table 1 and Eq. (1)-(2)
+            Lm = h/(E3*A);               % m/N
+            Cm = rho*A*h;                % kg
+            Rm = 1/(rho*c*A);            % m/(N*s)
+            Cp = epsr*eps0*A/h;          % F
+            Yw = A*Zw;
+            Fw = A*pw_amp;
+        
+            % Eq. (7)-(8)
+            Ywm = Yw + 1/Rm;
+            Rwm = 1/Ywm;
+        
+            % Eq. (9)-(11)
+            smallTerm = 1 + (w*Cm*Rwm)^2;
+            Req = Rwm/(d33^2*w^2*smallTerm);
+            Ceq = d33^2*smallTerm/(Rwm^2*Cm);
+            Leq = Lm/(d33^2*w^2);
+        
+            % Eq. (6): Veq = Fw/(j*w*d33*Ysh)
+            Ysh = 1/Rm + Yw + 1j*w*Cm;
+            Veq_phasor = Fw/(1j*w*d33*Ysh);
+        
+            % Piezo open-circuit voltage across Cp with the rectifier disconnected.
+            Zseries = Req + 1/(1j*w*Ceq) + 1j*w*Leq;
+            ZCp = 1/(1j*w*Cp);
+            Voc_piezo_phasor = Veq_phasor * ZCp/(Zseries + ZCp);
+        
+            uw = struct();
+            uw.material = material;
+            uw.A = A;
+            uw.pw_amp = pw_amp;
+            uw.f = f;
+            uw.w = w;
+            uw.Zw = Zw;
+            uw.h = h;
+            uw.E3 = E3;
+            uw.rho = rho;
+            uw.epsr = epsr;
+            uw.d33 = d33;
+            uw.c = c;
+            uw.Lm = Lm;
+            uw.Cm = Cm;
+            uw.Rm = Rm;
+            uw.Cp = Cp;
+            uw.Yw = Yw;
+            uw.Fw = Fw;
+            uw.Ywm = Ywm;
+            uw.Rwm = Rwm;
+            uw.smallTerm = smallTerm;
+            uw.Req = Req;
+            uw.Ceq = Ceq;
+            uw.Leq = Leq;
+            uw.Ysh = Ysh;
+            uw.Veq_phasor = Veq_phasor;
+            uw.Veq_amp = abs(Veq_phasor);
+            uw.Voc_piezo_phasor = Voc_piezo_phasor;
+            uw.Voc_piezo_amp = abs(Voc_piezo_phasor);
+            uw.Veq_per_Pa = abs(Veq_phasor)/max(abs(pw_amp), realmin);
+        end
+        
+        function r = underwaterRectifierEq29(I0, w, Cp, Rload, Vd)
+            % Underwater Energy Harvesting paper, Section 4.5, Eq. (29).
+            % Vrect = Vs + Vd, where Vs is the load/storage voltage.
+            r = struct("Vrect", NaN, "Vs", NaN, "Pload", NaN);
+        
+            if ~(isfinite(I0) && isfinite(w) && isfinite(Cp) && ...
+                 isfinite(Rload) && isfinite(Vd) && Rload > 0 && Cp > 0 && w > 0)
+                return;
+            end
+        
+            Vrect = (I0*Rload + pi*Vd)/(pi + w*Cp*Rload);
+            Vs = Vrect - Vd;
+        
+            % The derivation assumes conduction exists and Vs is approximately DC.
+            % Clamp only for physical harvested power.
+            Vs_for_power = max(Vs, 0);
+        
+            r.Vrect = Vrect;
+            r.Vs = Vs;
+            r.Pload = Vs_for_power^2/Rload;
+        end
+
     end
 end
