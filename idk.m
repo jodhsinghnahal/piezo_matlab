@@ -27,7 +27,7 @@ model = "simscape_model";
 
 % uninstall parsim
 % variant subsystem type (SEH or PSSHI)
-Type = "PSSHI";
+Type = "SEH";
 
 vpName     = "vp_sim";
 vstoreName = "vstore_sim";
@@ -54,7 +54,7 @@ Crect = 1e-6;     % F
 %   VSrc_eq_amp = |Veq| from Eq. (6), driven by acoustic pressure amplitude.
 %
 % Set false to keep the old Liang/Liao beam example values.
-useUnderwaterPaperModel = true;
+useUnderwaterPaperModel = false;
 
 if useUnderwaterPaperModel
     uwMaterial = "PZT";          % "PZT" or "PVDF"
@@ -87,7 +87,8 @@ else
     L  = 31e3;        % H
     R  = 1e6;         % ohm
     C  = 448e-12;     % F
-    Cp = 34.69e-9;    % F
+    % Cp = 34.69e-9;    % F
+    Cp = 34.69e-15;    % F
 
     ae = 4.75*10^-4;
     Y_rms_accel = 10;
@@ -108,20 +109,25 @@ t_start_ss_single = 3.0;
 % Load sweep settings
 doSweep = false;
 
+%fast mode
+fast_mode = true;
+
 % Avoid going too high unless you allow very long simulations.
 % With Crect = 1e-6, Rload = 10 MOhm gives tau = 10 s.
 Rload_list = logspace(4, 7, 20);     % 10 kOhm to 10 MOhm
 
-% minStopTime = 5.0;
-% tauMultiplier = 5.0;                 % simulate about 5 RC time constants
-% maxStopTime = 90.0;                  % safety cap
-% ssStartFraction = 0.75;              % use last 25% as steady-state
-
-% fast simulations
-minStopTime = 2.0;
-tauMultiplier = 1.5;
-maxStopTime = 20.0;
-ssStartFraction = 0.60;
+if fast_mode
+    % fast simulations
+    minStopTime = 2.0;
+    tauMultiplier = 1.5;
+    maxStopTime = 20.0;
+    ssStartFraction = 0.60;
+else
+    minStopTime = 5.0;
+    tauMultiplier = 5.0;                 % simulate about 5 RC time constants
+    maxStopTime = 90.0;                  % safety cap
+    ssStartFraction = 0.75;              % use last 25% as steady-state
+end
 
 %% P-SSHI settings
 Li = 47e-3;                 % SSHI inductor, H
@@ -137,7 +143,7 @@ Ieps = 1e-7;                % current deadband for zero-cross detection
 % Paper P-SSHI inversion factor, Eq. 22: gamma = -exp(-pi/(2Q))
 % IMPORTANT: Rsw should be the TOTAL resistance in the Cp-Li switching loop
 %            (switch Ron + inductor ESR + wiring/other series resistance).
-paper_gamma = -0.6;          % table 1
+paper_gamma = -0.7;          % table 1
 Q_needed = -1 * pi / (2 * log(-1 * paper_gamma));
 Rloop_total = sqrt(Li/Cp) / Q_needed;
 Rsw = Rloop_total - R_closed;
@@ -168,7 +174,11 @@ end
 if strcmpi(string(Type), "SEH")
     maxStep = T/400;
 elseif strcmpi(string(Type), "PSSHI") || strcmpi(string(Type), "P-SSHI")
-    maxStep = min(T/400, Tsw/5.5); % fast
+    if fast_mode
+        maxStep = min(T/400, Tsw/5.5); % fast
+    else
+        maxStep = min(T/400, Tsw/10);
+    end
 end
 
 %% ============================================================
@@ -204,10 +214,14 @@ if measureOC
 
     plotOpenCircuitVoc(Voc_oc);
 else
-    Zseries_old = R + 1j*w*L + 1/(1j*w*C);
-    ZCp_old = 1/(1j*w*Cp);
-
-    openCircuitVoltage = abs(VSrc_eq_amp * ZCp_old / (Zseries_old + ZCp_old));
+    if useUnderwaterPaperModel
+        Zseries_old = R + 1j*w*L + 1/(1j*w*C);
+        ZCp_old = 1/(1j*w*Cp);
+    
+        openCircuitVoltage = abs(VSrc_eq_amp * ZCp_old / (Zseries_old + ZCp_old));
+    else
+        openCircuitVoltage = 19.956714;
+    end
 end
 
 %% ============================================================
@@ -233,6 +247,8 @@ assignin("base", [TypeTag '_single_result'], single);
 % ============================================================
 
 plotSingleRun(single);
+flow = MyUtils.plotPaperStyleEnergyFlow(single);
+assignin("base", [TypeTag '_energy_flow'], flow);
 
 %% ============================================================
 % LOAD SWEEP
@@ -313,8 +329,6 @@ fprintf("  %s_sweep_results and %s_sweep_table if doSweep=true\n", TypeTag, Type
 
 totalTime = toc; % Stops timer and saves the elapsed time in seconds
 fprintf('Total execution time: %.4f seconds.\n', totalTime);
-
-set_param(model, "FastRestart", "off");
 
 %% ============================================================
 % LOCAL FUNCTIONS
@@ -444,7 +458,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
 
     %% One final steady-state cycle
     t2 = t_ss(end);
-    t1 = t2 - 2*T;
+    t1 = t2 - T;
 
     idx_cycle = t >= t1 & t <= t2;
 
@@ -530,6 +544,8 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     ZCp = 1/(1j*w*Cp);
     Zmech = R + ZL + ZC;
     % Veq_amp = abs(R + ZL + ZC + ZCp) / abs(ZCp) * Voc_sim;
+    XL = imag(ZL);
+    XC = imag(ZC);
 
     % Use measured open circuit voltage instead of eqn calculated Voc_sim
     Veq_amp = abs(R + ZL + ZC + ZCp) / abs(ZCp) * openCircuitVoltage;
@@ -653,6 +669,9 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     result.Rd = Rd;
     result.Rh = Rh;
     result.XE = XE;
+    result.XL = XL;
+    result.XC = XC;
+    result.Zmech = Zmech;
 
     result.Veq_amp = Veq_amp;
     result.Ph_eq42_auto = Ph_eq42_auto;
@@ -715,6 +734,9 @@ function printSingleSummary(r)
     fprintf("Rd = %.6e ohm\n", r.Rd);
     fprintf("Rh = %.6e ohm\n", r.Rh);
     fprintf("XE = %.6e ohm\n", r.XE);
+    fprintf("XL = %.6e ohm\n", r.XL);
+    fprintf("XC = %.6e ohm\n", r.XC);
+    fprintf("Zmech = %.6e + j%.6e ohm\n", real(r.Zmech), imag(r.Zmech));
     fprintf("Rd + Rh = %.6e ohm\n", r.Rd + r.Rh);
     fprintf("Re(Zelec_paper) = %.6e ohm\n", real(r.Zelec_paper));
     fprintf("Im(Zelec_paper) = %.6e ohm\n", imag(r.Zelec_paper));
@@ -890,11 +912,15 @@ function plotSweepResults(tbl, w, Cp)
     plot(tbl.Vtilde_rect(validV), tbl.Rd_ohm(validV), "o-", "LineWidth", 1.3); hold on;
     plot(tbl.Vtilde_rect(validV), tbl.Rh_ohm(validV), "s-", "LineWidth", 1.3);
     plot(tbl.Vtilde_rect(validV), tbl.XE_ohm(validV), "d-", "LineWidth", 1.3);
+    % plot(tbl.Vtilde_rect(validV), tbl.XL_ohm(validV), "d-", "LineWidth", 1.3);
+    % plot(tbl.Vtilde_rect(validV), tbl.XC_ohm(validV), "d-", "LineWidth", 1.3);
+    plot(tbl.Vtilde_rect(validV), imag(tbl.Zmech(validV)), "d-", "LineWidth", 1.3);
+    plot(tbl.Vtilde_rect(validV), tbl.R(validV), "d-", "LineWidth", 1.3);
     grid on;
     xlabel("$\tilde{V}_{rect}$", 'Interpreter', 'latex');
     ylabel("Ohms");
     title("Equivalent Impedance Decomposition");
-    legend("R_d dissipative", "R_h harvesting", "X_E reactive", ...
+    legend("R_d dissipative", "R_h harvesting", "X_E reactive", "X_L+X_C", "R", ...
         "Location", "best");
 
     %% Complex impedance plane
@@ -954,6 +980,73 @@ function plotSweepResults(tbl, w, Cp)
         "Location", "best");
 end
 
+function gamma_eff = gammaForType(Type, gamma)
+    if strcmpi(string(Type), "SEH")
+        gamma_eff = 1;
+    elseif strcmpi(string(Type), "PSSHI") || strcmpi(string(Type), "P-SSHI")
+        gamma_eff = gamma;
+    else
+        error("Unsupported Type '%s'. Use 'SEH' or 'PSSHI'.", char(string(Type)));
+    end
+end
+
+function p = paperPointPEH(Type, w, Cp, Vtilde_rect, Vtilde_F, gamma)
+    % Computes paper impedance values for SEH or P-SSHI at one Vtilde point.
+    % P-SSHI formulas use Eq. 23/24 and Eq. 31/32/33.
+    % SEH is recovered by setting gamma = 1.
+    
+    p.valid = false;
+    p.theta = NaN;
+    p.Zelec = NaN + 1j*NaN;
+    p.Rd = NaN;
+    p.Rh = NaN;
+    p.XE = NaN;
+    
+    gamma_eff = gammaForType(Type, gamma);
+    k = 1 + gamma_eff;
+    
+    if ~(isfinite(Vtilde_rect) && isfinite(Vtilde_F) && isfinite(gamma_eff))
+        return;
+    end
+    if Vtilde_rect <= 0 || k <= 0
+        return;
+    end
+    
+    % Eq. 24: cos(theta) = 1 - (1 + gamma)*Vtilde_rect
+    % For SEH with gamma=1, this becomes Eq. 13.
+    arg = 1 - k*Vtilde_rect;
+    if arg < -1 || arg > 1
+        return;
+    end
+    
+    theta = acos(arg);
+    s = sin(theta);
+    c = cos(theta);
+    
+    scale = 1/(pi*w*Cp);
+    
+    % Eq. 23, electrical equivalent impedance for P-SSHI.
+    % With gamma=1, this collapses to the SEH Eq. 16.
+    ReTerm = (1 - c) * (4/(1 + gamma_eff) - 1 + c);
+    ImTerm = s*c - theta;
+    Zelec = scale * (ReTerm + 1j*ImTerm);
+    
+    % Eq. 31-33, impedance decomposition for P-SSHI.
+    % With gamma=1, these collapse to SEH Eq. 27-29.
+    Rd = scale * (2*Vtilde_F*(2 - Vtilde_rect*(1 + gamma_eff)) + ...
+        Vtilde_rect^2*(1 - gamma_eff^2));
+    Rh = 2*scale * (Vtilde_rect - Vtilde_F) * ...
+        (2 - Vtilde_rect*(1 + gamma_eff));
+    XE = scale * (s*c - theta);
+    
+    p.valid = true;
+    p.theta = theta;
+    p.Zelec = Zelec;
+    p.Rd = Rd;
+    p.Rh = Rh;
+    p.XE = XE;
+end
+
 function tbl = resultsToTable(res)
 
     N = numel(res);
@@ -987,6 +1080,10 @@ function tbl = resultsToTable(res)
         rows(k).Rd_ohm               = r.Rd;
         rows(k).Rh_ohm               = r.Rh;
         rows(k).XE_ohm               = r.XE;
+        rows(k).XL_ohm               = r.XL;
+        rows(k).XC_ohm               = r.XC;
+        rows(k).R                    = r.R;
+        rows(k).Zmech                = r.Zmech;
         rows(k).I0_A                 = r.I0;
         rows(k).VpF_amp_V            = r.VpF_amp;
         rows(k).Veq_amp_V            = r.Veq_amp;
@@ -1000,73 +1097,6 @@ function tbl = resultsToTable(res)
     end
 
     tbl = struct2table(rows);
-end
-
-function gamma_eff = gammaForType(Type, gamma)
-    if strcmpi(string(Type), "SEH")
-        gamma_eff = 1;
-    elseif strcmpi(string(Type), "PSSHI") || strcmpi(string(Type), "P-SSHI")
-        gamma_eff = gamma;
-    else
-        error("Unsupported Type '%s'. Use 'SEH' or 'PSSHI'.", char(string(Type)));
-    end
-end
-
-function p = paperPointPEH(Type, w, Cp, Vtilde_rect, Vtilde_F, gamma)
-    % Computes paper impedance values for SEH or P-SSHI at one Vtilde point.
-    % P-SSHI formulas use Eq. 23/24 and Eq. 31/32/33.
-    % SEH is recovered by setting gamma = 1.
-
-    p.valid = false;
-    p.theta = NaN;
-    p.Zelec = NaN + 1j*NaN;
-    p.Rd = NaN;
-    p.Rh = NaN;
-    p.XE = NaN;
-
-    gamma_eff = gammaForType(Type, gamma);
-    k = 1 + gamma_eff;
-
-    if ~(isfinite(Vtilde_rect) && isfinite(Vtilde_F) && isfinite(gamma_eff))
-        return;
-    end
-    if Vtilde_rect <= 0 || k <= 0
-        return;
-    end
-
-    % Eq. 24: cos(theta) = 1 - (1 + gamma)*Vtilde_rect
-    % For SEH with gamma=1, this becomes Eq. 13.
-    arg = 1 - k*Vtilde_rect;
-    if arg < -1 || arg > 1
-        return;
-    end
-
-    theta = acos(arg);
-    s = sin(theta);
-    c = cos(theta);
-
-    scale = 1/(pi*w*Cp);
-
-    % Eq. 23, electrical equivalent impedance for P-SSHI.
-    % With gamma=1, this collapses to the SEH Eq. 16.
-    ReTerm = (1 - c) * (4/(1 + gamma_eff) - 1 + c);
-    ImTerm = s*c - theta;
-    Zelec = scale * (ReTerm + 1j*ImTerm);
-
-    % Eq. 31-33, impedance decomposition for P-SSHI.
-    % With gamma=1, these collapse to SEH Eq. 27-29.
-    Rd = scale * (2*Vtilde_F*(2 - Vtilde_rect*(1 + gamma_eff)) + ...
-                  Vtilde_rect^2*(1 - gamma_eff^2));
-    Rh = 2*scale * (Vtilde_rect - Vtilde_F) * ...
-                   (2 - Vtilde_rect*(1 + gamma_eff));
-    XE = scale * (s*c - theta);
-
-    p.valid = true;
-    p.theta = theta;
-    p.Zelec = Zelec;
-    p.Rd = Rd;
-    p.Rh = Rh;
-    p.XE = XE;
 end
 
 function result = emptyResultStruct()
@@ -1142,6 +1172,9 @@ function result = emptyResultStruct()
     result.Rd = NaN;
     result.Rh = NaN;
     result.XE = NaN;
+    result.XL = NaN;
+    result.XC = NaN;
+    result.Zmech = NaN;
 
     result.Veq_amp = NaN;
     result.Ph_eq42_auto = NaN;
