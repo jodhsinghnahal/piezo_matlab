@@ -455,8 +455,15 @@ classdef MyUtils
         end
         
         function r = underwaterRectifierEq29(I0, w, Cp, Rload, Vd)
-            % Underwater Energy Harvesting paper, Section 4.5, Eq. (29).
-            % Vrect = Vs + Vd, where Vs is the load/storage voltage.
+            % Corrected full-wave rectifier version.
+            %
+            % Vrect = Vs + Vd
+            % Vd is the TOTAL bridge drop, so if each diode is 0.5 V,
+            % pass Vd = VF_bridge = 1.0 V.
+            %
+            % Full-wave bridge conducts twice per vibration period, so the
+            % charge delivered per period has a factor of 2.
+        
             r = struct("Vrect", NaN, "Vs", NaN, "Pload", NaN);
         
             if ~(isfinite(I0) && isfinite(w) && isfinite(Cp) && ...
@@ -464,16 +471,14 @@ classdef MyUtils
                 return;
             end
         
-            Vrect = (I0*Rload + pi*Vd)/(pi + w*Cp*Rload);
+            Vrect = (2*I0*Rload + pi*Vd) / (pi + 2*w*Cp*Rload);
             Vs = Vrect - Vd;
         
-            % The derivation assumes conduction exists and Vs is approximately DC.
-            % Clamp only for physical harvested power.
             Vs_for_power = max(Vs, 0);
         
             r.Vrect = Vrect;
             r.Vs = Vs;
-            r.Pload = Vs_for_power^2/Rload;
+            r.Pload = Vs_for_power^2 / Rload;
         end
 
         function flow = plotPaperStyleEnergyFlow(r)
@@ -688,6 +693,73 @@ classdef MyUtils
             end
         end
 
+        function clean = removeSpikes(signal, val)
+            spike_indices = abs(signal) > val;
+            signal(spike_indices) = NaN;
+            clean = fillmissing(signal, 'linear');
+        end
 
+        function diagnosePiezoHarvesting(r)
+
+            t  = r.t_cycle(:);
+            vp = r.vp_cycle(:);
+            ie = r.ieq_cycle_eff(:);
+            ir = r.irect_cycle(:);
+            vs = r.vstore_cycle(:);
+
+            % Capacitor current through Cp
+            dvpdt = gradient(vp, t);
+            iCp = r.Cp .* dvpdt;
+
+            % Current available to external harvesting interface
+            % Sign may need flipping depending on sensor direction.
+            ip_calc = ie - iCp;
+
+            % Powers
+            p_generated_to_elec = vp .* ie;
+            p_Cp = vp .* iCp;
+            p_interface = vp .* ip_calc;
+            p_rect_load = vs.^2 ./ r.Rload;
+
+            P_gen = mean(p_generated_to_elec, "omitnan");
+            P_Cp_avg = mean(p_Cp, "omitnan");
+            P_interface = mean(p_interface, "omitnan");
+            P_load = mean(p_rect_load, "omitnan");
+
+            fprintf("\n===== PIEZO HARVESTING DIAGNOSTIC =====\n");
+            fprintf("Mean piezo electrical power vp*ieq      = %.6f mW\n", 1000*P_gen);
+            fprintf("Mean Cp reactive power vp*iCp           = %.6f mW\n", 1000*P_Cp_avg);
+            fprintf("Mean interface power vp*(ieq-iCp)       = %.6f mW\n", 1000*P_interface);
+            fprintf("Mean load power Vstore^2/Rload          = %.6f mW\n", 1000*P_load);
+            fprintf("RMS ieq                                 = %.6e A\n", rms(ie));
+            fprintf("RMS iCp                                 = %.6e A\n", rms(iCp));
+            fprintf("RMS rectifier current                   = %.6e A\n", rms(ir));
+
+            figure("Name","Where the Piezo Current Goes");
+            plot(t, ie, "LineWidth",1.4); hold on;
+            plot(t, iCp, "LineWidth",1.4);
+            plot(t, ip_calc, "LineWidth",1.4);
+            plot(t, ir, "LineWidth",1.4);
+            grid on;
+            xlabel("Time within one cycle (s)");
+            ylabel("Current (A)");
+            title("Piezo Current Split");
+            legend("i_{eq}", "i_{Cp}=Cp dv_p/dt", "i_{interface}=i_{eq}-i_{Cp}", "i_{rect}", ...
+                "Location","best");
+
+            figure("Name","Where the Piezo Power Goes");
+            plot(t, 1000*p_generated_to_elec, "LineWidth",1.4); hold on;
+            plot(t, 1000*p_Cp, "LineWidth",1.4);
+            plot(t, 1000*p_interface, "LineWidth",1.4);
+            plot(t, 1000*p_rect_load, "LineWidth",1.4);
+            grid on;
+            xlabel("Time within one cycle (s)");
+            ylabel("Power (mW)");
+            title("Piezo Power Split");
+            legend("v_p i_{eq}", "v_p i_{Cp}", "v_p i_{interface}", "V_{store}^2/R", ...
+                "Location","best");
+        end
+
+        
     end
 end

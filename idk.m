@@ -1,12 +1,12 @@
 %% ============================================================
-% FULL SEH / P-SSHI SIMSCAPE + PAPER-STYLE IMPEDANCE ANALYSIS
+% FULL SEH / P-SSHI / S-SSHI SIMSCAPE + PAPER-STYLE IMPEDANCE ANALYSIS
 %
 % This script:
 % 1) Runs one detailed SEH simulation (first get piezo open circuit voltage)
 % 2) Extracts steady-state vp, ieq, Vstore
 % 3) Computes fundamental components
 % 4) Computes Zelec_sim = Vp,F / Ieq,F
-% 5) Computes paper SEH or P-SSHI Zelec formula
+% 5) Computes paper SEH, P-SSHI, or S-SSHI Zelec formula
 % 6) Decomposes Zelec into Rd, Rh, XE
 % 7) Computes harvested power vs extracted power
 % 8) Runs an Rload sweep
@@ -26,7 +26,9 @@ Simulink.sdi.clear;
 model = "simscape_model";
 
 % uninstall parsim
-% variant subsystem type (SEH or PSSHI)
+% Variant subsystem type: "SEH", "PSSHI", or "SSSHI"
+% For S-SSHI, your Simscape variant must place the switch+Li+Rsw in SERIES
+% between the piezo terminal and the bridge rectifier AC terminal.
 Type = "SEH";
 
 vpName     = "vp_sim";
@@ -42,7 +44,11 @@ w = 2*pi*f;
 T = 1/f;
 
 % Single-run load
-Rload_single = 1e6;
+if strcmpi(string(Type), "SSSHI")
+    Rload_single = 1e5;
+else
+    Rload_single = 1e6;
+end
 
 % Rectifier / storage / load
 Crect = 1e-6;     % F
@@ -58,11 +64,10 @@ useUnderwaterPaperModel = false;
 
 if useUnderwaterPaperModel
     uwMaterial = "PZT";          % "PZT" or "PVDF"
-    uwArea_m2 = 2e-3;            % paper uses 2e-3 or 20e-3 m^2 for PZT
-    SPL_dB = 220;  p_ref = 1e-6;            % your dial, dB re 1 uPa
+    uwArea_m2 = 2e-3;            % use 2e-3 or 20e-3 m^2 for PZT
+    SPL_dB = 250;  p_ref = 1e-6;            % dB re 1 uPa for underwater
     pw_rms = p_ref * 10^(SPL_dB/20);
     uwPressureAmp_Pa = sqrt(2) * pw_rms;      % peak acoustic pressure amplitude, Pa
-    % harvested power scales ~ p_w^2
 
     uw = MyUtils.underwaterPaperEquivalent(uwMaterial, uwArea_m2, uwPressureAmp_Pa, f);
 
@@ -87,8 +92,8 @@ else
     L  = 31e3;        % H
     R  = 1e6;         % ohm
     C  = 448e-12;     % F
-    % Cp = 34.69e-9;    % F
-    Cp = 34.69e-15;    % F
+    Cp = 34.69e-9;    % F
+    % Cp = 34.69e-15;    % F
 
     ae = 4.75*10^-4;
     Y_rms_accel = 10;
@@ -129,7 +134,7 @@ else
     ssStartFraction = 0.75;              % use last 25% as steady-state
 end
 
-%% P-SSHI settings
+%% SSHI settings
 Li = 47e-3;                 % SSHI inductor, H
 % Rsw = 10;                   % switching-loop resistance, ohm
 R_closed = 0.54;            %IRL510 on resistance
@@ -157,10 +162,13 @@ gamma_psshi = -exp(-pi/(2*Qsshi));
 
 % Use gamma = 1 for SEH. SEH is the gamma = 1 special case of the
 % P-SSHI formulas in the Liang/Liao impedance paper.
+% P-SSHI and S-SSHI both use the SSHI inversion factor gamma.
 if strcmpi(string(Type), "SEH")
     gamma = 1;
-else
+elseif any(strcmpi(string(Type), ["PSSHI","P-SSHI","SSSHI","S-SSHI"]))
     gamma = gamma_psshi;
+else
+    error("Unsupported Type '%s'. Use SEH, PSSHI, or SSSHI.", char(string(Type)));
 end
 
 % Safe tag for workspace variable names, e.g., "PSSHI" -> "psshi".
@@ -173,7 +181,7 @@ end
 % Solver max step for cleaner waveform/fundamental extraction
 if strcmpi(string(Type), "SEH")
     maxStep = T/400;
-elseif strcmpi(string(Type), "PSSHI") || strcmpi(string(Type), "P-SSHI")
+elseif any(strcmpi(string(Type), ["PSSHI","P-SSHI","SSSHI","S-SSHI"]))
     if fast_mode
         maxStep = min(T/400, Tsw/5.5); % fast
     else
@@ -247,8 +255,9 @@ assignin("base", [TypeTag '_single_result'], single);
 % ============================================================
 
 plotSingleRun(single);
-flow = MyUtils.plotPaperStyleEnergyFlow(single);
-assignin("base", [TypeTag '_energy_flow'], flow);
+% flow = MyUtils.plotPaperStyleEnergyFlow(single);
+% assignin("base", [TypeTag '_energy_flow'], flow);
+% MyUtils.diagnosePiezoHarvesting(single);
 
 %% ============================================================
 % LOAD SWEEP
@@ -425,9 +434,12 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     [t_ip, ip] = MyUtils.readSignalDirect(simOut, ipName);
     [t_ip, ip] = MyUtils.cleanTimeSignal(t_ip, ip);
 
-    if strcmpi(string(Type), "PSSHI")
+    if isSSHIType(Type)
         [t_fp, fp] = MyUtils.readSignalDirect(simOut, flipName);
         [t_fp, fp] = MyUtils.cleanTimeSignal(t_fp, fp);
+    else
+        t_fp = [];
+        fp = [];
     end
 
     % Use vp time as common time base
@@ -438,7 +450,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     ieq = interp1(t_i, ieq, t, "linear", "extrap");
     irect = interp1(t_ir, irect, t, "linear", "extrap");
     ip = interp1(t_ip, ip, t, "linear", "extrap");
-    if strcmpi(string(Type), "PSSHI")
+    if isSSHIType(Type)
         fp = interp1(t_fp, fp, t, "previous", "extrap");
     end
 
@@ -472,8 +484,10 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     ieq_c = ieq(idx_cycle);
     irect_c = irect(idx_cycle);
     ip_c = ip(idx_cycle);
-    if strcmpi(string(Type), "PSSHI")
+    if isSSHIType(Type)
         fp_c = fp(idx_cycle);
+    else
+        fp_c = [];
     end
 
     tau = t_c - t_c(1);
@@ -573,17 +587,42 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     Pdelta_fundamental = 0.5 * real(Zelec_sim) * I0^2;
 
     %% Rough theta measurement from simulated clamped region
-    theta_sim_rough = MyUtils.estimateThetaFromVpClamp(tau, vp_c, Vrect_sim, T);
-    %% use this instead
-    theta_sim_exact = MyUtils.estimateThetaFromRectCurrent(t_c, irect_c, ieq_phase, f);
+    % S-SSHI uses a different ideal waveform and does not have the same
+    % rectifier-blocked angle theta as SEH/P-SSHI.
+    if isSSSHIType(Type)
+        theta_sim_rough = NaN;
+        theta_sim_exact = NaN;
+    else
+        theta_sim_rough = MyUtils.estimateThetaFromVpClamp(tau, vp_c, Vrect_sim, T);
+        theta_sim_exact = MyUtils.estimateThetaFromRectCurrent(t_c, irect_c, ieq_phase, f);
+    end
 
     %% Ideal paper waveform for one cycle
     vp_paper = nan(size(t_c));
+    phi = mod(w*t_c + ieq_phase, 2*pi);
+    gamma_eff = gammaForType(Type, gamma);
 
-    if isfinite(theta_paper)
+    if isSSSHIType(Type) && isfinite(Voc_sim) && isfinite(Vrect_sim)
 
-        phi = mod(w*t_c + ieq_phase, 2*pi);
-        gamma_eff = gammaForType(Type, gamma);
+        % S-SSHI Eq. 25.
+        offset = ((1 - gamma_eff)/(1 + gamma_eff)) * (Voc_sim - Vrect_sim);
+
+        for kk = 1:length(phi)
+            p = phi(kk);
+
+            if p >= 0 && p < pi
+                vp_paper(kk) = -Voc_sim*cos(p) + offset;
+            else
+                vp_paper(kk) = -Voc_sim*cos(p) - offset;
+            end
+        end
+
+        % Match polarity with simulated vp
+        if MyUtils.simpleCorr(vp_paper(:), vp_c(:)) < 0
+            vp_paper = -vp_paper;
+        end
+
+    elseif isfinite(theta_paper)
 
         for kk = 1:length(phi)
             p = phi(kk);
@@ -632,7 +671,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     result.ieq_cycle_eff = ieq_c_eff;
     result.irect_cycle = irect_c;
     result.ip_cycle = ip_c;
-    if strcmpi(string(Type), "PSSHI")
+    if isSSHIType(Type)
         result.fp_cycle = fp_c;
     else 
         result.fp_cycle = [];
@@ -806,8 +845,10 @@ function plotSingleRun(r)
     plot(r.t_cycle, MyUtils.normalizeShape(r.ieq_F), "--", "LineWidth", 1.5); hold on;
     plot(r.t_cycle, MyUtils.normalizeShape(r.vp_cycle), "LineWidth", 1.5);
     plot(r.t_cycle, MyUtils.normalizeShape(r.vp_F), ":", "LineWidth", 2.0);
+    plot(r.t_cycle, MyUtils.normalizeShape(r.irect_cycle), "LineWidth", 2.0);
+    plot(r.t_cycle, MyUtils.normalizeShape(MyUtils.removeSpikes(r.ip_cycle, 0.0003)), "LineWidth", 2.0);
 
-    labels2 = ["i_{eq,F}", "Simscape v_p", "v_{p,F}"];
+    labels2 = ["i_{eq,F}", "Simscape v_p", "v_{p,F}", "i_{rect}", "i_{piezo}"];
     if all(isfinite(r.vp_paper))
         plot(r.t_cycle, MyUtils.normalizeShape(r.vp_paper), "-.", "LineWidth", 1.5);
         labels2(end+1) = "Ideal paper v_p";
@@ -835,13 +876,22 @@ function plotSingleRun(r)
     ylabel("Voltage (V)");
 
     yyaxis right;
-    plot(r.t_cycle, r.ieq_F, "--", "LineWidth", 1.4);
     plot(r.t_cycle, r.ieq_cycle_eff, "-.r", "LineWidth", 1.4);
-    plot(r.t_cycle, r.irect_cycle, "-.y", "LineWidth", 1.4);
-    % plot(r.t_cycle, r.ip_cycle, "-.w", "LineWidth", 1.4);
+    plot(r.t_cycle, r.irect_cycle, "-y", "LineWidth", 1.4);
+
+    cutoff = 100; % no cutoff
+    if string(r.Type) == "PSSHI"
+        cutoff = 0.0003;
+    end
+    plot(r.t_cycle, MyUtils.removeSpikes(r.ip_cycle, cutoff), "-.m", "LineWidth", 1.4);
+
     if ~isempty(r.fp_cycle)
-        Iscale = 0.8 * max(abs(r.ieq_cycle_eff));
-        stairs(r.t_cycle, double(r.fp_cycle) * Iscale, "w", "LineWidth", 1.5);
+        if string(r.Type) == "PSSHI"
+            Iscale = 0.8 * max(abs(r.ieq_cycle_eff));
+        else
+            Iscale = 0.8 * max(abs(r.ip_cycle));
+        end
+        stairs(r.t_cycle, double(r.fp_cycle) * Iscale, "-.w", "LineWidth", 1.5);
     end
     ylabel("Current (A)");
 
@@ -849,13 +899,15 @@ function plotSingleRun(r)
     xlabel("Time within one cycle (s)");
     title("One-Cycle Simscape vs Fundamental vs Paper " + string(r.Type));
 
+    labels3 = ["Simscape v_p", "v_{p,F}"];
     if all(isfinite(r.vp_paper))
-        legend("Simscape v_p", "v_{p,F}", "Ideal paper v_p", "v_{store}", "i_{eq,F}", "i_{eq}", "i_{rect}", ...
-            "flip", "Location", "best");
-    else
-        legend("Simscape v_p", "v_{p,F}", "v_{store}", "i_{eq,F}", "i_{eq}", "i_{rect}", ...
-           "flip", "Location", "best");
+        labels3(end+1) = "Ideal paper v_p";
     end
+    labels3(end+1:end+4) = ["v_{store}", "i_{eq}", "i_{rect}", "i_{piezo}"];
+    if ~isempty(r.fp_cycle)
+        labels3(end+1) = "flip";
+    end
+    legend(labels3, "Location", "best");
 end
 
 function plotSweepResults(tbl, w, Cp)
@@ -964,36 +1016,51 @@ function plotSweepResults(tbl, w, Cp)
     legend("Simscape", "Paper", "Location", "best");
     legend("Paper", "Location", "best");
 
-    %% Theta validation
-    figure("Name", "Sweep: Rectifier Blocked Angle");
-    plot(tbl.Vtilde_rect(validV), tbl.theta_paper_rad(validV), "o-", "LineWidth", 1.4); hold on;
-    % plot(tbl.Vtilde_rect(validV), tbl.theta_sim_rough_rad(validV), "s--", "LineWidth", 1.4);
-    plot(tbl.Vtilde_rect(validV), tbl.theta_sim_exact_rad(validV), "s--", "LineWidth", 1.4);
+    %% Theta validation. Skip for S-SSHI because theta is not defined there.
+    if any(isfinite(tbl.theta_paper_rad(validV))) || any(isfinite(tbl.theta_sim_exact_rad(validV)))
+        figure("Name", "Sweep: Rectifier Blocked Angle");
+        plot(tbl.Vtilde_rect(validV), tbl.theta_paper_rad(validV), "o-", "LineWidth", 1.4); hold on;
+        % plot(tbl.Vtilde_rect(validV), tbl.theta_sim_rough_rad(validV), "s--", "LineWidth", 1.4);
+        plot(tbl.Vtilde_rect(validV), tbl.theta_sim_exact_rad(validV), "s--", "LineWidth", 1.4);
 
-    grid on;
-    xlabel("$\tilde{V}_{rect}$", 'Interpreter', 'latex');
-    ylabel("\theta (rad)");
-    title("Rectifier Blocked Angle: Paper Formula vs Simscape Estimate");
-    % legend("\theta from paper formula", "\theta rough from v_p clamp", ...
-    %     "Location", "best");
-    legend("\theta from paper formula", "\theta from rectifier current", ...
-        "Location", "best");
+        grid on;
+        xlabel("$\tilde{V}_{rect}$", 'Interpreter', 'latex');
+        ylabel("\theta (rad)");
+        title("Rectifier Blocked Angle: Paper Formula vs Simscape Estimate");
+        % legend("\theta from paper formula", "\theta rough from v_p clamp", ...
+        %     "Location", "best");
+        legend("\theta from paper formula", "\theta from rectifier current", ...
+            "Location", "best");
+    end
+end
+
+function tf = isPSSHIType(Type)
+    tf = any(strcmpi(string(Type), ["PSSHI", "P-SSHI"]));
+end
+
+function tf = isSSSHIType(Type)
+    tf = any(strcmpi(string(Type), ["SSSHI", "S-SSHI"]));
+end
+
+function tf = isSSHIType(Type)
+    tf = isPSSHIType(Type) || isSSSHIType(Type);
 end
 
 function gamma_eff = gammaForType(Type, gamma)
     if strcmpi(string(Type), "SEH")
         gamma_eff = 1;
-    elseif strcmpi(string(Type), "PSSHI") || strcmpi(string(Type), "P-SSHI")
+    elseif isSSHIType(Type)
         gamma_eff = gamma;
     else
-        error("Unsupported Type '%s'. Use 'SEH' or 'PSSHI'.", char(string(Type)));
+        error("Unsupported Type '%s'. Use 'SEH', 'PSSHI', or 'SSSHI'.", char(string(Type)));
     end
 end
 
 function p = paperPointPEH(Type, w, Cp, Vtilde_rect, Vtilde_F, gamma)
-    % Computes paper impedance values for SEH or P-SSHI at one Vtilde point.
-    % P-SSHI formulas use Eq. 23/24 and Eq. 31/32/33.
-    % SEH is recovered by setting gamma = 1.
+    % Computes paper impedance values for SEH, P-SSHI, or S-SSHI at one
+    % Vtilde point.
+    %   SEH/P-SSHI: Eq. 23/24 and Eq. 31/32/33, with SEH = gamma = 1.
+    %   S-SSHI:     Eq. 26 and Eq. 34/35/36.
     
     p.valid = false;
     p.theta = NaN;
@@ -1003,12 +1070,57 @@ function p = paperPointPEH(Type, w, Cp, Vtilde_rect, Vtilde_F, gamma)
     p.XE = NaN;
     
     gamma_eff = gammaForType(Type, gamma);
-    k = 1 + gamma_eff;
     
     if ~(isfinite(Vtilde_rect) && isfinite(Vtilde_F) && isfinite(gamma_eff))
         return;
     end
-    if Vtilde_rect <= 0 || k <= 0
+
+    if Vtilde_rect <= 0
+        return;
+    end
+
+    % ============================================================
+    % S-SSHI: Eq. 26 and Eq. 34-36
+    % ============================================================
+    if isSSSHIType(Type)
+
+        % gamma must be between -1 and 1 for the factor to be finite.
+        if gamma_eff <= -1 || gamma_eff >= 1
+            return;
+        end
+
+        % S-SSHI useful harvesting region from the analytical model.
+        if Vtilde_rect <= Vtilde_F || Vtilde_rect >= 1
+            return;
+        end
+
+        factor = (1 - gamma_eff) / (1 + gamma_eff);
+
+        % Eq. 26
+        Zelec = (1/(w*Cp)) * ( ...
+            (4/pi) * factor * (1 - Vtilde_rect) ...
+            - 1j );
+
+        % Eq. 34-36
+        scale = 4/(pi*w*Cp) * factor;
+        Rd = scale * (1 - Vtilde_rect + Vtilde_F) * (1 - Vtilde_rect);
+        Rh = scale * (Vtilde_rect - Vtilde_F) * (1 - Vtilde_rect);
+        XE = -1/(w*Cp);
+
+        p.valid = true;
+        p.theta = NaN;
+        p.Zelec = Zelec;
+        p.Rd = Rd;
+        p.Rh = Rh;
+        p.XE = XE;
+        return;
+    end
+
+    % ============================================================
+    % SEH / P-SSHI: Eq. 23/24 and Eq. 31-33
+    % ============================================================
+    k = 1 + gamma_eff;
+    if k <= 0
         return;
     end
     
