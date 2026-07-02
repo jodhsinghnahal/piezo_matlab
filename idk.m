@@ -17,7 +17,7 @@
 
 tic; % Starts the stopwatch timer
 clear; clc; close all;
-Simulink.sdi.clear; 
+Simulink.sdi.clear;
 
 %% ============================================================
 % USER SETTINGS
@@ -25,11 +25,11 @@ Simulink.sdi.clear;
 
 model = "simscape_model";
 
-% uninstall parsim
 % Variant subsystem type: "SEH", "PSSHI", or "SSSHI"
 % For S-SSHI, your Simscape variant must place the switch+Li+Rsw in SERIES
 % between the piezo terminal and the bridge rectifier AC terminal.
-Type = "SEH";
+Type = "PSSHI";
+CrossCircuitType = "BJT"; % "Switch" (PS Zero Cross Switch) or "BJT" (Zero Cross Circ 1)
 
 vpName     = "vp_sim";
 vstoreName = "vstore_sim";
@@ -37,6 +37,10 @@ ieqName    = "ieq_sim";
 irectName = "irect_sim";
 ipName = "ip_sim";
 flipName = "flip_sim";
+
+% For BJT ESP-PSSHI: Current Sensor blocks in series with each SSHI inductor.
+iL1Name = "iL1_sim";
+iL2Name = "iL2_sim";
 
 % Excitation
 f = 42;                         % Hz
@@ -144,6 +148,8 @@ Tsw = pi * sqrt(Li * Cp);   % switch closed time for half LC cycle
 blankingTime = 0.25 / f;    % prevents repeated triggering near zero
 tEnable = 3 / f;            % delay switching until startup settles
 Ieps = 1e-7;                % current deadband for zero-cross detection
+Sres = 1e-2; % zero cross circ params
+Pcond = 1e-6;
 
 % Paper P-SSHI inversion factor, Eq. 22: gamma = -exp(-pi/(2Q))
 % IMPORTANT: Rsw should be the TOTAL resistance in the Cp-Li switching loop
@@ -240,10 +246,10 @@ fprintf("\n============================================================\n");
 fprintf("SINGLE DETAILED %s RUN\n", char(string(Type)));
 fprintf("============================================================\n");
 
-single = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipName, flipName, ...
+single = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipName, flipName, iL1Name, iL2Name, ...
     L, R, C, Cp, Crect, Rload_single, VF_bridge, VSrc_eq_amp, ...
     f, stopTime_single, t_start_ss_single, maxStep, ...
-    Type, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
+    Type, CrossCircuitType, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
     tEnable, Ieps, gamma, Qsshi, openCircuitVoltage);
 
 printSingleSummary(single);
@@ -285,10 +291,10 @@ if doSweep
             k, N, Rload_k, tauRC, stopTime_k);
 
         try
-            sweepResults(k) = runOneSEH(model, vpName, vstoreName, ieqName, irectName,ipName, flipName, ...
+            sweepResults(k) = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipName, flipName, iL1Name, iL2Name, ...
                 L, R, C, Cp, Crect, Rload_k, VF_bridge, VSrc_eq_amp, ...
                 f, stopTime_k, t_start_ss_k, maxStep, ...
-                Type, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
+                Type, CrossCircuitType, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
                 tEnable, Ieps, gamma, Qsshi, openCircuitVoltage);
         catch ME
             warning("Sweep failed at Rload = %.4e ohm: %s", Rload_k, ME.message);
@@ -343,10 +349,10 @@ fprintf('Total execution time: %.4f seconds.\n', totalTime);
 % LOCAL FUNCTIONS
 % ============================================================
 
-function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipName, flipName, ...
+function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipName, flipName, iL1Name, iL2Name, ...
     L, R, C, Cp, Crect, Rload, VF_bridge, VSrc_eq_amp, ...
     f, stopTime, t_start_ss, maxStep, ...
-    Type, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
+    Type, CrossCircuitType, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
     tEnable, Ieps, gamma, Qsshi, openCircuitVoltage)
 
     runControl = 1;   % normal harvesting run (closed circuit)
@@ -369,11 +375,13 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     result.f = f;
     result.w = w;
     result.Type = string(Type);
+    result.CrossCircuitType = string(CrossCircuitType);
     result.gamma = gamma;
     result.Qsshi = Qsshi;
     result.openCircuitVoltage = openCircuitVoltage;
     result.Li = Li;
     result.Rsw = Rsw;
+    result.Tsw = Tsw;
 
     %% Collect all model variables in one place
     params = struct( ...
@@ -434,7 +442,20 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     [t_ip, ip] = MyUtils.readSignalDirect(simOut, ipName);
     [t_ip, ip] = MyUtils.cleanTimeSignal(t_ip, ip);
 
-    if isSSHIType(Type)
+    if isSSHIType(Type) && CrossCircuitType == "BJT"
+        [t_iL1, iL1] = MyUtils.readSignalDirect(simOut, iL1Name);
+        [t_iL1, iL1] = MyUtils.cleanTimeSignal(t_iL1, iL1);
+
+        [t_iL2, iL2] = MyUtils.readSignalDirect(simOut, iL2Name);
+        [t_iL2, iL2] = MyUtils.cleanTimeSignal(t_iL2, iL2);
+    else
+        t_iL1 = [];
+        iL1 = [];
+        t_iL2 = [];
+        iL2 = [];
+    end
+
+    if isSSHIType(Type) && CrossCircuitType == "Switch"
         [t_fp, fp] = MyUtils.readSignalDirect(simOut, flipName);
         [t_fp, fp] = MyUtils.cleanTimeSignal(t_fp, fp);
     else
@@ -450,7 +471,20 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     ieq = interp1(t_i, ieq, t, "linear", "extrap");
     irect = interp1(t_ir, irect, t, "linear", "extrap");
     ip = interp1(t_ip, ip, t, "linear", "extrap");
-    if isSSHIType(Type)
+
+    if ~isempty(t_iL1)
+        iL1 = interp1(t_iL1, iL1, t, "linear", "extrap");
+    else
+        iL1 = nan(size(t));
+    end
+
+    if ~isempty(t_iL2)
+        iL2 = interp1(t_iL2, iL2, t, "linear", "extrap");
+    else
+        iL2 = nan(size(t));
+    end
+
+    if isSSHIType(Type) && CrossCircuitType == "Switch"
         fp = interp1(t_fp, fp, t, "previous", "extrap");
     end
 
@@ -484,13 +518,49 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     ieq_c = ieq(idx_cycle);
     irect_c = irect(idx_cycle);
     ip_c = ip(idx_cycle);
-    if isSSHIType(Type)
+    iL1_c = iL1(idx_cycle);
+    iL2_c = iL2(idx_cycle);
+
+    if isSSHIType(Type) && CrossCircuitType == "Switch"
         fp_c = fp(idx_cycle);
     else
         fp_c = [];
     end
 
     tau = t_c - t_c(1);
+
+    %% Flip ON/OFF signal for both versions
+    % Switch version: use the logged digital/control flip signal.
+    % BJT version: use the real inductor currents. Flip is ON when L1 or L2 current flows.
+    flipOn_c = false(size(t_c));
+    flipSource = "none";
+    flip_eps = NaN;
+    flipL1_c = false(size(t_c));
+    flipL2_c = false(size(t_c));
+
+    if isSSHIType(Type) && CrossCircuitType == "Switch" && ~isempty(fp_c)
+        fpMax = max(abs(fp_c), [], "omitnan");
+        if isfinite(fpMax) && fpMax > 0
+            flipOn_c = abs(fp_c) > 0.5 * fpMax;
+        else
+            flipOn_c = fp_c > 0.5;
+        end
+        flipSource = "flip_sim";
+
+    elseif isSSHIType(Type) && CrossCircuitType == "BJT"
+        IflipMax = max(abs([iL1_c(:); iL2_c(:)]), [], "omitnan");
+
+        if isempty(IflipMax) || ~isfinite(IflipMax) || IflipMax <= 0
+            flip_eps = NaN;
+            flipOn_c = false(size(t_c));
+        else
+            flip_eps = max(1e-9, 0.02 * IflipMax);
+            flipL1_c = abs(iL1_c) > flip_eps;
+            flipL2_c = abs(iL2_c) > flip_eps;
+            flipOn_c = flipL1_c | flipL2_c;
+        end
+        flipSource = "BJT inductor current";
+    end
 
     %% Fundamental components
     [vp_F, VpF_amp, VpF_phase] = MyUtils.fundamentalComponent(t_c, vp_c, f);
@@ -515,6 +585,9 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
 
     I0 = abs(Ie_phasor);
     ieq_phase = angle(Ie_phasor);
+
+    % Switch timing against zero-crossings of the equivalent source current.
+    switchEvents = MyUtils.computeSwitchEvents(t_c, tau, flipOn_c, ieq_c_eff);
 
     Zelec_sim = Vp_phasor / Ie_phasor;
 
@@ -665,17 +738,22 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     result.ieq_ss_eff = ieq_ss_eff;
 
     result.t_cycle = tau;
+    result.t_cycle_abs = t_c;
     result.vp_cycle = vp_c;
     result.vstore_cycle = vstore_c;
     result.ieq_cycle_raw = ieq_c;
     result.ieq_cycle_eff = ieq_c_eff;
     result.irect_cycle = irect_c;
     result.ip_cycle = ip_c;
-    if isSSHIType(Type)
-        result.fp_cycle = fp_c;
-    else 
-        result.fp_cycle = [];
-    end
+    result.iL1_cycle = iL1_c;
+    result.iL2_cycle = iL2_c;
+    result.flipOn_cycle = flipOn_c;
+    result.flipL1_cycle = flipL1_c;
+    result.flipL2_cycle = flipL2_c;
+    result.flipSource = flipSource;
+    result.flip_eps = flip_eps;
+    result.switchEvents = switchEvents;
+    result.fp_cycle = fp_c;
 
     result.vp_F = vp_F;
     result.ieq_F = ieq_F;
@@ -796,6 +874,101 @@ function printSingleSummary(r)
     fprintf("\n===== Equivalent Source =====\n");
     fprintf("Veq_amp inferred from measured open-circuit Voc = %.6f V\n", r.Veq_amp);
     fprintf("Ideal VSrc_eq_amp used in model source = %.6f V\n", r.VSrc_eq_amp);
+
+    printSwitchTiming(r);
+end
+
+function printSwitchTiming(r)
+
+    fprintf("\n===== Switch / Flip Timing, Final Cycle =====\n");
+
+    if ~isfield(r, "flipSource") || strlength(string(r.flipSource)) == 0
+        fprintf("No flip source stored.\n");
+    else
+        fprintf("Flip source = %s\n", char(string(r.flipSource)));
+    end
+
+    if isfield(r, "flip_eps") && isfinite(r.flip_eps)
+        fprintf("BJT flip current threshold = %.6e A\n", r.flip_eps);
+    end
+
+    if isfield(r, "Tsw") && isfinite(r.Tsw)
+        fprintf("Expected ideal LC half-period Tsw = %.3f us\n", r.Tsw * 1e6);
+    end
+
+    % Print all equivalent-current zero-crossings in the final cycle.
+    if isfield(r, "t_cycle_abs") && ~isempty(r.t_cycle_abs)
+        tAbs = r.t_cycle_abs(:);
+    elseif isfield(r, "t_cycle") && ~isempty(r.t_cycle)
+        tAbs = r.t_cycle(:);
+    else
+        fprintf("No cycle time vector found.\n");
+        return;
+    end
+
+    if isfield(r, "t_cycle") && ~isempty(r.t_cycle)
+        tRel = r.t_cycle(:);
+    else
+        tRel = tAbs - tAbs(1);
+    end
+
+    if isfield(r, "ieq_cycle_eff") && ~isempty(r.ieq_cycle_eff)
+        currentForZero = r.ieq_cycle_eff(:);
+        currentName = "i_eq";
+    elseif isfield(r, "ip_cycle") && ~isempty(r.ip_cycle)
+        currentForZero = r.ip_cycle(:);
+        currentName = "i_p";
+    else
+        fprintf("No current signal found for zero-cross timing.\n");
+        currentForZero = [];
+        currentName = "current";
+    end
+
+    if ~isempty(currentForZero) && numel(currentForZero) == numel(tAbs)
+        zc = MyUtils.findZeroCrossings(tAbs, tRel, currentForZero);
+    else
+        zc.tAbs = [];
+        zc.tRel = [];
+    end
+
+    fprintf("%s zero-crossings in final cycle:\n", char(currentName));
+    if isempty(zc.tAbs)
+        fprintf("  none found\n");
+    else
+        for kk = 1:numel(zc.tAbs)
+            fprintf("  ZC %d: absolute %.9f s, cycle %.9f s\n", ...
+                kk, zc.tAbs(kk), zc.tRel(kk));
+        end
+    end
+
+    events = r.switchEvents;
+
+    if isempty(events)
+        fprintf("No switch/flip ON events found in the final cycle.\n");
+        return;
+    end
+
+    for kk = 1:numel(events)
+        e = events(kk);
+
+        fprintf(['Event %d: closed from %.9f s to %.9f s absolute ' ...
+                 '(cycle %.9f s to %.9f s)\n'], ...
+            kk, e.tStartAbs, e.tEndAbs, e.tStartRel, e.tEndRel);
+
+        fprintf('         duration = %.3f us\n', e.duration * 1e6);
+
+        if isfinite(e.nearestCurrentZeroAbs)
+            fprintf(['         nearest %s zero-cross = %.9f s absolute ' ...
+                     '(cycle %.9f s)\n'], ...
+                char(currentName), e.nearestCurrentZeroAbs, e.nearestCurrentZeroRel);
+
+            fprintf('         switch delay from zero-cross = %.3f us\n', ...
+                e.delayFromZero * 1e6);
+        else
+            fprintf('         nearest %s zero-cross = not found in final cycle\n', ...
+                char(currentName));
+        end
+    end
 end
 
 function plotOpenCircuitVoc(oc)
@@ -883,15 +1056,18 @@ function plotSingleRun(r)
     if string(r.Type) == "PSSHI"
         cutoff = 0.0003;
     end
-    plot(r.t_cycle, MyUtils.removeSpikes(r.ip_cycle, cutoff), "-.m", "LineWidth", 1.4);
+    ip_plot = MyUtils.removeSpikes(r.ip_cycle, cutoff);
+    plot(r.t_cycle, ip_plot, "-.m", "LineWidth", 1.4);
 
-    if ~isempty(r.fp_cycle)
-        if string(r.Type) == "PSSHI"
-            Iscale = 0.8 * max(abs(r.ieq_cycle_eff));
-        else
-            Iscale = 0.8 * max(abs(r.ip_cycle));
+    % One simple flip ON/OFF trace for both Switch and BJT versions.
+    % Switch version: flipOn_cycle comes from flip_sim.
+    % BJT version: flipOn_cycle comes from abs(iL1) or abs(iL2).
+    if isfield(r, "flipOn_cycle") && ~isempty(r.flipOn_cycle) && any(r.flipOn_cycle)
+        Iscale = 0.8 * max(abs([r.ieq_cycle_eff(:); r.irect_cycle(:); ip_plot(:)]), [], "omitnan");
+        if ~isfinite(Iscale) || Iscale <= 0
+            Iscale = 1;
         end
-        stairs(r.t_cycle, double(r.fp_cycle) * Iscale, "-.w", "LineWidth", 1.5);
+        stairs(r.t_cycle, double(r.flipOn_cycle) * Iscale, "-.w", "LineWidth", 1.5);
     end
     ylabel("Current (A)");
 
@@ -904,7 +1080,7 @@ function plotSingleRun(r)
         labels3(end+1) = "Ideal paper v_p";
     end
     labels3(end+1:end+4) = ["v_{store}", "i_{eq}", "i_{rect}", "i_{piezo}"];
-    if ~isempty(r.fp_cycle)
+    if isfield(r, "flipOn_cycle") && ~isempty(r.flipOn_cycle) && any(r.flipOn_cycle)
         labels3(end+1) = "flip";
     end
     legend(labels3, "Location", "best");
@@ -1226,11 +1402,13 @@ function result = emptyResultStruct()
     result.f = NaN;
     result.w = NaN;
     result.Type = "";
+    result.CrossCircuitType = "";
     result.gamma = NaN;
     result.Qsshi = NaN;
     result.openCircuitVoltage = [];
     result.Li = NaN;
     result.Rsw = NaN;
+    result.Tsw = NaN;
 
     result.t = [];
     result.vp = [];
@@ -1246,13 +1424,22 @@ function result = emptyResultStruct()
     result.irect = [];
 
     result.t_cycle = [];
+    result.t_cycle_abs = [];
     result.vp_cycle = [];
     result.vstore_cycle = [];
     result.ieq_cycle_raw = [];
     result.ieq_cycle_eff = [];
     result.irect_cycle = [];
     result.ip_cycle = [];
+    result.iL1_cycle = [];
+    result.iL2_cycle = [];
     result.fp_cycle = [];
+    result.flipOn_cycle = [];
+    result.flipL1_cycle = [];
+    result.flipL2_cycle = [];
+    result.flipSource = "";
+    result.flip_eps = NaN;
+    result.switchEvents = [];
 
     result.vp_F = [];
     result.ieq_F = [];

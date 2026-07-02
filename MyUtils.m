@@ -760,6 +760,131 @@ classdef MyUtils
                 "Location","best");
         end
 
+        function events = computeSwitchEvents(tAbs, tRel, flipOn, currentForZero)
+            tAbs = tAbs(:);
+            tRel = tRel(:);
+            flipOn = logical(flipOn(:));
         
+            if nargin < 4
+                currentForZero = [];
+            else
+                currentForZero = currentForZero(:);
+            end
+        
+            events = struct( ...
+                "tStartAbs", {}, "tEndAbs", {}, ...
+                "tStartRel", {}, "tEndRel", {}, ...
+                "duration", {}, ...
+                "nearestCurrentZeroAbs", {}, "nearestCurrentZeroRel", {}, ...
+                "delayFromZero", {});
+        
+            if isempty(tAbs) || isempty(tRel) || isempty(flipOn)
+                return;
+            end
+        
+            n = min([numel(tAbs), numel(tRel), numel(flipOn)]);
+            tAbs = tAbs(1:n);
+            tRel = tRel(1:n);
+            flipOn = flipOn(1:n);
+        
+            d = diff([false; flipOn; false]);
+            startIdx = find(d == 1);
+            endIdx = find(d == -1) - 1;
+        
+            if ~isempty(currentForZero) && numel(currentForZero) >= n
+                currentForZero = currentForZero(1:n);
+                zc = MyUtils.findZeroCrossings(tAbs, tRel, currentForZero);
+            else
+                zc.tAbs = [];
+                zc.tRel = [];
+            end
+        
+            for kk = 1:numel(startIdx)
+                i1 = startIdx(kk);
+                i2 = endIdx(kk);
+        
+                e.tStartAbs = tAbs(i1);
+                e.tEndAbs = tAbs(i2);
+                e.tStartRel = tRel(i1);
+                e.tEndRel = tRel(i2);
+                e.duration = max(0, e.tEndAbs - e.tStartAbs);
+        
+                if ~isempty(zc.tAbs)
+                    [~, iz] = min(abs(zc.tAbs - e.tStartAbs));
+                    e.nearestCurrentZeroAbs = zc.tAbs(iz);
+                    e.nearestCurrentZeroRel = zc.tRel(iz);
+                    e.delayFromZero = e.tStartAbs - zc.tAbs(iz);
+                else
+                    e.nearestCurrentZeroAbs = NaN;
+                    e.nearestCurrentZeroRel = NaN;
+                    e.delayFromZero = NaN;
+                end
+        
+                events(end+1) = e; %#ok<AGROW>
+            end
+        end
+        
+        function zc = findZeroCrossings(tAbs, tRel, x)
+        
+            tAbs = tAbs(:);
+            tRel = tRel(:);
+            x = x(:);
+        
+            zc.tAbs = [];
+            zc.tRel = [];
+        
+            n = min([numel(tAbs), numel(tRel), numel(x)]);
+            if n < 2
+                return;
+            end
+        
+            tAbs = tAbs(1:n);
+            tRel = tRel(1:n);
+            x = x(1:n);
+        
+            ok = isfinite(tAbs) & isfinite(tRel) & isfinite(x);
+            tAbs = tAbs(ok);
+            tRel = tRel(ok);
+            x = x(ok);
+        
+            if numel(x) < 2
+                return;
+            end
+        
+            lastAbs = NaN;
+            lastRel = NaN;
+            minGap = 1e-12;
+        
+            for k = 1:numel(x)-1
+                x1 = x(k);
+                x2 = x(k+1);
+        
+                hit = false;
+                tHitAbs = NaN;
+                tHitRel = NaN;
+        
+                if x1 == 0
+                    hit = true;
+                    tHitAbs = tAbs(k);
+                    tHitRel = tRel(k);
+                elseif x1 * x2 < 0
+                    frac = -x1 / (x2 - x1);
+                    tHitAbs = tAbs(k) + frac * (tAbs(k+1) - tAbs(k));
+                    tHitRel = tRel(k) + frac * (tRel(k+1) - tRel(k));
+                    hit = true;
+                end
+        
+                if hit
+                    if isempty(zc.tAbs) || abs(tHitAbs - lastAbs) > minGap || abs(tHitRel - lastRel) > minGap
+                        zc.tAbs(end+1,1) = tHitAbs; %#ok<AGROW>
+                        zc.tRel(end+1,1) = tHitRel; %#ok<AGROW>
+                        lastAbs = tHitAbs;
+                        lastRel = tHitRel;
+                    end
+                end
+            end
+        end
+
+
     end
 end

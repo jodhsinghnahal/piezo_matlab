@@ -29,7 +29,8 @@ model = "simscape_model";
 % Variant subsystem type: "SEH", "PSSHI", or "SSSHI"
 % For S-SSHI, your Simscape variant must place the switch+Li+Rsw in SERIES
 % between the piezo terminal and the bridge rectifier AC terminal.
-Type = "SEH";
+Type = "PSSHI";
+CrossCircuitType = "BJT"; % "Switch" (PS Zero Cross Switch) or "BJT" (Zero Cross Circ 1)
 
 vpName     = "vp_sim";
 vstoreName = "vstore_sim";
@@ -53,12 +54,8 @@ end
 % Rectifier / storage / load
 Crect = 1e-6;     % F
 
-% full desgin, test dif frequencies with dif interface type (choose circuit for freq), dif Crect
-% frequency excitation match with LpCp oscilation frequency (in PSSHI just
-% use Lp, no switch)
-% forward voltage underwater at 220 db
-% underwater extracted power bottleneck (design diode forward voltage)
-% dif freq, area, piezo type, rload, crect
+Sres = 1e-2;
+Pcond = 1e-6;
 
 %% Equivalent electrical-domain transducer model
 % Set true to use the underwater-acoustic equivalent circuit paper:
@@ -250,7 +247,7 @@ fprintf("============================================================\n");
 single = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipName, flipName, ...
     L, R, C, Cp, Crect, Rload_single, VF_bridge, VSrc_eq_amp, ...
     f, stopTime_single, t_start_ss_single, maxStep, ...
-    Type, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
+    Type, CrossCircuitType, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
     tEnable, Ieps, gamma, Qsshi, openCircuitVoltage);
 
 printSingleSummary(single);
@@ -295,7 +292,7 @@ if doSweep
             sweepResults(k) = runOneSEH(model, vpName, vstoreName, ieqName, irectName,ipName, flipName, ...
                 L, R, C, Cp, Crect, Rload_k, VF_bridge, VSrc_eq_amp, ...
                 f, stopTime_k, t_start_ss_k, maxStep, ...
-                Type, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
+                Type, CrossCircuitType, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
                 tEnable, Ieps, gamma, Qsshi, openCircuitVoltage);
         catch ME
             warning("Sweep failed at Rload = %.4e ohm: %s", Rload_k, ME.message);
@@ -353,7 +350,7 @@ fprintf('Total execution time: %.4f seconds.\n', totalTime);
 function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipName, flipName, ...
     L, R, C, Cp, Crect, Rload, VF_bridge, VSrc_eq_amp, ...
     f, stopTime, t_start_ss, maxStep, ...
-    Type, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
+    Type, CrossCircuitType, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
     tEnable, Ieps, gamma, Qsshi, openCircuitVoltage)
 
     runControl = 1;   % normal harvesting run (closed circuit)
@@ -441,7 +438,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     [t_ip, ip] = MyUtils.readSignalDirect(simOut, ipName);
     [t_ip, ip] = MyUtils.cleanTimeSignal(t_ip, ip);
 
-    if isSSHIType(Type)
+    if isSSHIType(Type) && CrossCircuitType == "Switch"
         [t_fp, fp] = MyUtils.readSignalDirect(simOut, flipName);
         [t_fp, fp] = MyUtils.cleanTimeSignal(t_fp, fp);
     else
@@ -457,7 +454,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     ieq = interp1(t_i, ieq, t, "linear", "extrap");
     irect = interp1(t_ir, irect, t, "linear", "extrap");
     ip = interp1(t_ip, ip, t, "linear", "extrap");
-    if isSSHIType(Type)
+    if isSSHIType(Type) && CrossCircuitType == "Switch"
         fp = interp1(t_fp, fp, t, "previous", "extrap");
     end
 
@@ -491,7 +488,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     ieq_c = ieq(idx_cycle);
     irect_c = irect(idx_cycle);
     ip_c = ip(idx_cycle);
-    if isSSHIType(Type)
+    if isSSHIType(Type) && CrossCircuitType == "Switch"
         fp_c = fp(idx_cycle);
     else
         fp_c = [];
@@ -678,7 +675,7 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     result.ieq_cycle_eff = ieq_c_eff;
     result.irect_cycle = irect_c;
     result.ip_cycle = ip_c;
-    if isSSHIType(Type)
+    if isSSHIType(Type) && CrossCircuitType == "Switch"
         result.fp_cycle = fp_c;
     else 
         result.fp_cycle = [];
