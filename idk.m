@@ -111,19 +111,23 @@ Vd_single = 0.5;
 VF_bridge = 2 * Vd_single;       % total conducting bridge drop, V
 r_single = 0.3; % the on resistance
 
+C1 = 2.2e-9;
+Vbe = 0.55;
+curGain = 25;
+
 % Single-run timing
 stopTime_single = 5.0;
 t_start_ss_single = 3.0;
 
 % Load sweep settings
-doSweep = false;
+doSweep = true;
 
 %fast mode
 fast_mode = true;
 
 % Avoid going too high unless you allow very long simulations.
 % With Crect = 1e-6, Rload = 10 MOhm gives tau = 10 s.
-Rload_list = logspace(4, 7, 20);     % 10 kOhm to 10 MOhm
+Rload_list = logspace(4, 6.7, 20);     % 10 kOhm to 10 MOhm
 
 if fast_mode
     % fast simulations
@@ -148,7 +152,8 @@ Tsw = pi * sqrt(Li * Cp);   % switch closed time for half LC cycle
 blankingTime = 0.25 / f;    % prevents repeated triggering near zero
 tEnable = 3 / f;            % delay switching until startup settles
 Ieps = 1e-7;                % current deadband for zero-cross detection
-Sres = 1e-2; % zero cross circ params
+
+Sres = 1e-2; % zero cross circ 3 params
 Pcond = 1e-6;
 
 % Paper P-SSHI inversion factor, Eq. 22: gamma = -exp(-pi/(2Q))
@@ -246,7 +251,7 @@ fprintf("\n============================================================\n");
 fprintf("SINGLE DETAILED %s RUN\n", char(string(Type)));
 fprintf("============================================================\n");
 
-single = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipName, flipName, iL1Name, iL2Name, ...
+single = runOneSEH(fast_mode, model, vpName, vstoreName, ieqName, irectName, ipName, flipName, iL1Name, iL2Name, ...
     L, R, C, Cp, Crect, Rload_single, VF_bridge, VSrc_eq_amp, ...
     f, stopTime_single, t_start_ss_single, maxStep, ...
     Type, CrossCircuitType, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
@@ -291,7 +296,7 @@ if doSweep
             k, N, Rload_k, tauRC, stopTime_k);
 
         try
-            sweepResults(k) = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipName, flipName, iL1Name, iL2Name, ...
+            sweepResults(k) = runOneSEH(fast_mode, model, vpName, vstoreName, ieqName, irectName, ipName, flipName, iL1Name, iL2Name, ...
                 L, R, C, Cp, Crect, Rload_k, VF_bridge, VSrc_eq_amp, ...
                 f, stopTime_k, t_start_ss_k, maxStep, ...
                 Type, CrossCircuitType, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
@@ -349,7 +354,7 @@ fprintf('Total execution time: %.4f seconds.\n', totalTime);
 % LOCAL FUNCTIONS
 % ============================================================
 
-function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipName, flipName, iL1Name, iL2Name, ...
+function result = runOneSEH(fast_mode, model, vpName, vstoreName, ieqName, irectName, ipName, flipName, iL1Name, iL2Name, ...
     L, R, C, Cp, Crect, Rload, VF_bridge, VSrc_eq_amp, ...
     f, stopTime, t_start_ss, maxStep, ...
     Type, CrossCircuitType, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
@@ -399,21 +404,21 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
 
     %% Simulation input
     simIn = Simulink.SimulationInput(model);
-
+    
     simIn = simIn.setModelParameter("StopTime", num2str(stopTime));
     simIn = simIn.setModelParameter("ReturnWorkspaceOutputs", "on");
 
-    % simIn = simIn.setModelParameter("LimitDataPoints", "off");
-    % simIn = simIn.setModelParameter("Decimation", "1");
-
     % fast mode
-    simIn = simIn.setModelParameter("LimitDataPoints", "on");
-    simIn = simIn.setModelParameter("MaxDataPoints", "20000");
-    simIn = simIn.setModelParameter("Decimation", "5");
+    if fast_mode
+        simIn = simIn.setModelParameter("LimitDataPoints", "on");
+        simIn = simIn.setModelParameter("MaxDataPoints", "20000");
+        simIn = simIn.setModelParameter("Decimation", "5");
+    else
+        simIn = simIn.setModelParameter("LimitDataPoints", "off");
+        simIn = simIn.setModelParameter("Decimation", "1");
+    end
 
     if ~isempty(maxStep) && isfinite(maxStep) && maxStep > 0
-        % currentMaxStep = get_param(model, 'MaxStep');
-        % disp(['The current MaxStep is: ', currentMaxStep]);
         simIn = simIn.setModelParameter("MaxStep", num2str(maxStep));
     end
 
@@ -593,9 +598,9 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
 
     %% Basic simulated power
     Pload_inst = vstore_ss.^2 ./ Rload;
-    Pload_avg = mean(Pload_inst, "omitnan");
+    Pload_avg = trapz(t_ss, Pload_inst) / (t_ss(end) - t_ss(1));
 
-    Vstore_avg = mean(vstore_ss, "omitnan");
+    Vstore_avg = trapz(t_ss, vstore_ss) / (t_ss(end) - t_ss(1));
 
     %% Paper SEH / P-SSHI values at the Simscape operating point
     Voc_sim = I0 / (w * Cp);
@@ -656,7 +661,8 @@ function result = runOneSEH(model, vpName, vstoreName, ieqName, irectName, ipNam
     end
 
     %% Extracted electrical power from time-domain and fundamental-domain
-    Pdelta_time = mean(vp_c .* ieq_c_eff, "omitnan");
+    Pdelta_time = trapz(t_c, vp_c .* ieq_c_eff) / (t_c(end) - t_c(1));
+
     Pdelta_fundamental = 0.5 * real(Zelec_sim) * I0^2;
 
     %% Rough theta measurement from simulated clamped region
