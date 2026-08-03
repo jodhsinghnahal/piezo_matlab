@@ -1,0 +1,58 @@
+* P-SSHI COMBINED DEVICE SWEEP
+* Union of the ultra-low-power and broader recommended candidate sets.
+*
+* Set NPN transistor Value to: {npn}
+* Set PNP transistor Value to: {pnp}
+* Set swept diode Value to:    {Diode}
+*
+* Sweep size: 9 NPN x 9 PNP x 12 diodes = 972 runs.
+* Only ONE set of .step directives is used.
+
+* -----------------------------------------------------------------------------
+* NPN CANDIDATES: IDs 1-9
+* -----------------------------------------------------------------------------
+.model 1 ako:2N5089
+.model 2 ako:BC847C
+.model 3 ako:2N3904
+.model 4 ako:2N2222
+.model 5 ako:BC817-40T116
+.model 6 ako:BSS4130A
+.model 7 ako:BSS64A
+.model 8 ako:2N5550
+.model 9 ako:TIP31C
+
+* -----------------------------------------------------------------------------
+* PNP CANDIDATES: IDs 10-18
+* -----------------------------------------------------------------------------
+.model 10 ako:2N5087
+.model 11 ako:BC857C
+.model 12 ako:2N3906
+.model 13 ako:2N2907
+.model 14 ako:BC807-40T116
+.model 15 ako:BSS5130A
+.model 16 ako:BSS63A
+.model 17 ako:2N5401
+.model 18 ako:TIP32C
+
+* -----------------------------------------------------------------------------
+* DIODE CANDIDATES: IDs 19-30
+* -----------------------------------------------------------------------------
+.model 19 ako:RB751CM-40
+.model 20 ako:BAT54
+.model 21 ako:BAS40HY
+.model 22 ako:MMSD4148
+.model 23 ako:1N4148
+.model 24 ako:MBR0520L
+.model 25 ako:1N5817
+.model 26 ako:PMEG2010EA
+.model 27 ako:NSR20F30NXT5G
+.model 28 ako:MBR0540
+.model 29 ako:BAT46WJ
+.model 30 ako:MURS120
+
+* -----------------------------------------------------------------------------
+* ACTIVE SWEEPS
+* -----------------------------------------------------------------------------
+.step param npn list 1 2 3 4 5 6 7 8 9
+.step param pnp list 10 11 12 13 14 15 16 17 18
+.step param Diode list 19 20 21 22 23 24 25 26 27 28 29 30

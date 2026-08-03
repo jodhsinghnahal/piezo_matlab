@@ -1,0 +1,108 @@
+* =============================================================
+* UNDERWATER PIEZOELECTRIC EQUIVALENT MODEL
+* =============================================================
+ 
+* ---------------- USER SETTINGS ----------------
+* materialSel: 1 = PZT, 2 = PVDF
+.param materialSel=1
+ 
+* modelSel: 0 = old/original, 1 = updated Eq. (28)-(32)
+.param modelSel=0
+ 
+.param A=2e-3
+.param SPL_dB=250
+.param f=42
+* ------------------------------------------------
+ 
+* Constants
+.param pi0=3.141592653589793
+.param eps0=8.8541878128e-12
+.param Zw=1.5e6
+.param p_ref=1e-6
+.param w={2*pi0*f}
+ 
+* Material properties
+.param h={if(materialSel==1,200e-6,100e-6)}
+.param E3={if(materialSel==1,5e10,2.5e9)}
+.param rho={if(materialSel==1,7.8e3,1.78e3)}
+.param epsr={if(materialSel==1,3.8e3,12.5)}
+.param d33={if(materialSel==1,650e-12,30e-12)}
+.param c={if(materialSel==1,4000,2250)}
+ 
+* Underwater acoustic pressure
+.param pw_rms={p_ref*exp(ln(10)*SPL_dB/20)}
+.param pw_amp={sqrt(2)*pw_rms}
+ 
+* Mechanical/acoustic quantities
+.param Lm={h/(E3*A)}
+.param Cm={rho*A*h}
+.param Rm={1/(rho*c*A)}
+ 
+.param Cp1={epsr*eps0*A/h}
+ 
+.param Yw={A*Zw}
+.param Fw={A*pw_amp}
+ 
+.param Ywm={Yw+1/Rm}
+.param Rwm={1/Ywm}
+ 
+* =============================================================
+* OLD / ORIGINAL MODEL
+* =============================================================
+ 
+.param old_x={w*Cm*Rwm}
+.param old_smallTerm={1+old_x*old_x}
+ 
+.param Req_old={Rwm/(d33*d33*w*w*old_smallTerm)}
+.param Ceq_old={d33*d33*old_smallTerm/(Rwm*Rwm*Cm)}
+.param Leq_old={Lm/(d33*d33*w*w)}
+ 
+.param Veq_old={Fw/(w*d33*sqrt(Ywm*Ywm+(w*Cm)*(w*Cm)))}
+ 
+.param Cp_old={Cp1}
+ 
+* =============================================================
+* UPDATED EQ. (28)-(32) MODEL
+* =============================================================
+ 
+.param Req_new={Lm*Lm*Ywm/(d33*d33)}
+.param Ceq_new={d33*d33/Lm}
+.param Leq_new={Lm*Lm*Cm/(d33*d33)}
+ 
+.param Veq_new={Fw*Lm/d33}
+ 
+.param Cp_new={Cp1-d33*d33/Lm}
+ 
+* =============================================================
+* SELECT ACTIVE MODEL
+* =============================================================
+ 
+.param Req={if(modelSel==1,Req_new,Req_old)}
+.param Ceq={if(modelSel==1,Ceq_new,Ceq_old)}
+.param Leq={if(modelSel==1,Leq_new,Leq_old)}
+.param Veq={if(modelSel==1,Veq_new,Veq_old)}
+.param Cp={if(modelSel==1,Cp_new,Cp_old)}
+ 
+* =============================================================
+* OPEN-CIRCUIT VOLTAGE CALCULATION
+* =============================================================
+ 
+.param Xseries={w*Leq-1/(w*Ceq)}
+.param Xcp={-1/(w*Cp)}
+ 
+.param Voc_calc={Veq*abs(Xcp)/sqrt(Req*Req+(Xseries+Xcp)*(Xseries+Xcp))}
+ 
+.param Veq_per_Pa={Veq/pw_amp}
+ 
+*.meas tran Req_result PARAM {Req}
+*.meas tran Ceq_result PARAM {Ceq}
+*.meas tran Leq_result PARAM {Leq}
+*.meas tran Cp_result PARAM {Cp}
+*.meas tran Veq_result PARAM {Veq}
+*.meas tran Voc_result PARAM {Voc_calc}
+*.meas tran pressure_peak_result PARAM {pw_amp}
+*.meas tran Veq_per_Pa_result PARAM {Veq_per_Pa}
+
+.meas tran Pavg_R9 AVG (I(R9)*I(R9)*{Rload}) FROM 1.001190476 TO 1.024999
+.meas tran Pavg_R4 AVG (I(R4)*I(R4)*{Rload}) FROM 1.001190476 TO 1.024999
+.meas tran Pavg_R12 AVG (I(R12)*I(R12)*{Rload}) FROM 1.001190476 TO 1.024999

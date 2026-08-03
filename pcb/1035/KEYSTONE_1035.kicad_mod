@@ -1,0 +1,173 @@
+(footprint "KEYSTONE_1035"
+	(version 20260206)
+	(generator "pcbnew")
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at 0.127 -2.3114 0)
+		(layer "F.SilkS")
+		(uuid "2d8bf17b-db55-4c04-a805-5fb942545a90")
+		(effects
+			(font
+				(size 0.64 0.64)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "KEYSTONE_1035"
+		(at 3.3782 2.1336 0)
+		(layer "F.Fab")
+		(uuid "5759ffb0-7771-4a9b-9e05-18d53dca5ae9")
+		(effects
+			(font
+				(size 0.64 0.64)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "8206872b-63c7-4098-bd16-b9e207766dd3")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "d1b08933-474d-4669-8bd4-380ba979b5dc")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr through_hole)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -1.27 0.25)
+		(end -1.27 -0.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "95d068c2-007e-4755-b920-548d432b2b45")
+	)
+	(fp_line
+		(start 1.27 -0.25)
+		(end 1.27 0.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "060acce8-9a87-4d72-8b74-4a62627f1a09")
+	)
+	(fp_line
+		(start -1.52 -1.2025)
+		(end -1.52 1.2025)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "66f9e20f-bb17-4761-af35-0710c631a997")
+	)
+	(fp_line
+		(start -1.52 1.2025)
+		(end 1.52 1.2025)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "f79b9d5d-7dd0-4c24-95b9-09be71ff31ec")
+	)
+	(fp_line
+		(start 1.52 -1.2025)
+		(end -1.52 -1.2025)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "9ec03e26-0bea-4f34-8689-e3b4899f8231")
+	)
+	(fp_line
+		(start 1.52 1.2025)
+		(end 1.52 -1.2025)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "ab147c4c-d762-465f-9ea0-6378cd1b7e73")
+	)
+	(fp_line
+		(start -1.27 -0.25)
+		(end 1.27 -0.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "5f230e26-b6a5-4334-b476-9058d2fb1141")
+	)
+	(fp_line
+		(start -1.27 0.25)
+		(end -1.27 -0.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "d7bf145b-0f34-4842-b434-c622fdf3021d")
+	)
+	(fp_line
+		(start 1.27 -0.25)
+		(end 1.27 0.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "58630b70-af97-4255-a730-188a4b120289")
+	)
+	(fp_line
+		(start 1.27 0.25)
+		(end -1.27 0.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "21ea8dca-24ec-40e5-a985-e50b10893fb6")
+	)
+	(pad "TP" thru_hole circle
+		(at 0 0)
+		(size 1.905 1.905)
+		(drill 1.27)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(solder_mask_margin 0.102)
+		(uuid "1d370485-65aa-4cbc-b488-b26c5c7bbb26")
+	)
+	(embedded_fonts no)
+	(model "/home/jodh/piezo_matlab/1035/1035.step"
+		(offset
+			(xyz 0 0.3 -3)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz -90 -0 -0)
+		)
+	)
+)

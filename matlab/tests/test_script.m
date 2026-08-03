@@ -1,0 +1,45 @@
+% 220, 230, 200, 150
+clear; clc; close all;
+f_test = 42;
+CrossCircuitTest = "BJT";
+% Type_test = "SEH";
+% WindingRatio_test = 0.03;
+% idk;
+% WindingRatio_test = 0.1;
+% idk;
+% WindingRatio_test = 1.0;
+% idk;
+% WindingRatio_test = 0.5;
+% idk;
+% WindingRatio_test = 0.25;
+% idk;
+% WindingRatio_test = 1.5;
+% idk;
+
+Type_test = "PSSHI";
+% WindingRatio_test = 0.03;
+% idk;
+% WindingRatio_test = 0.1;
+% idk;
+% WindingRatio_test = 1.0;
+% idk;
+% WindingRatio_test = 0.5;
+% idk;
+% WindingRatio_test = 0.25;
+% idk;
+WindingRatio_test = 1.0;
+idk;
+% 
+% Type_test = "SSSHI";
+% WindingRatio_test = 0.03;
+% idk;
+% WindingRatio_test = 0.1;
+% idk;
+% WindingRatio_test = 1.0;
+% idk;
+% WindingRatio_test = 0.5;
+% idk;
+% WindingRatio_test = 0.25;
+% idk;
+% WindingRatio_test = 1.5;
+% idk;

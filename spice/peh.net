@@ -1,0 +1,92 @@
+* Z:\home\jodh\piezo_matlab\spice\peh.asc
+V1 N002 0 SINE(0 {Veq} {f} 0 0 0 0)
+R1 N013 N007 {Req}
+L1 N002 N007 {Leq}
+C1 N021 N013 {Ceq}
+C2 N021 0 {Cp}
+D1 N021 N025 {Diode}
+Q1 N025 N027 N033 0 {npn}
+D2 N028 N027 {Diode}
+D4 N031 N030 {Diode}
+Q2 N028 N021 N029 0 {pnp}
+Q3 N030 N021 N029 0 {npn}
+L2 N033 N035 {Li}
+R2 N035 0 {Rsw}
+C3 N029 0 {C1}
+L3 N032 N034 {Li}
+R3 N034 0 {Rsw}
+Q4 N026 N031 N032 0 {pnp}
+D3 N026 N021 {Diode}
+D5 N021 N023 {Diode}
+D6 0 N023 {Diode}
+D7 N024 N021 {Diode}
+D8 N024 0 {Diode}
+C4 N023 N024 {Crect}
+R4 N023 N024 {Rload}
+R8 N003 N009 10
+C14 N019 0 {C1}
+Q5 N014 N003 N019 0 {pnp}
+Q6 N010 N015 N020 0 {npn}
+L5 N020 N022 {Li}
+Q7 N011 N016 N020 0 {pnp}
+Q8 N017 N003 N018 0 {npn}
+C15 N018 0 {C1}
+R10 N003 N008 10
+D19 N003 N004 {Diode}
+D20 0 N004 {Diode}
+D21 N005 N003 {Diode}
+D22 N005 0 {Diode}
+C16 N004 N005 {Crect}
+R9 N004 N005 {Rload}
+R11 N022 0 {Rsw}
+V3 N001 0 SINE(0 {Veq} {f} 0 0 0 0)
+R7 N012 N006 {Req}
+L4 N001 N006 {Leq}
+C12 N003 N012 {Ceq}
+C13 N003 0 {Cp}
+D23 N037 N036 {Diode}
+D24 0 N036 {Diode}
+D25 N038 N037 {Diode}
+D26 N038 0 {Diode}
+C17 N036 N038 {Crect}
+R12 N036 N038 {Rload}
+V2 N039 0 SINE(0 {Veq} {f} 0 0 0 0)
+R5 N041 N040 {Req}
+L6 N039 N040 {Leq}
+C5 N037 N041 {Ceq}
+C6 N037 0 {Cp}
+D13 N009 N019 {Diode}
+D31 N014 N015 {Diode}
+D32 N003 N010 {Diode}
+D33 N011 N003 {Diode}
+D34 N016 N017 {Diode}
+D35 N018 N008 {Diode}
+.model D D
+.lib C:\users\jodh\My Documents\LTspiceXVII\lib\cmp\standard.dio
+.model NPN NPN
+.model PNP PNP
+.lib C:\users\jodh\My Documents\LTspiceXVII\lib\cmp\standard.bjt
+.tran 0 1.025 1 uic
+.param Rload=5.994843e+04
+.param Crect=1uF
+.param Rsw= 84
+.param C1=1.9800e-08
+.param Li=0.0470
+* .step param C1 list 1n 10n 20n 45n\n.step param Li list 0.047 0.1 0.5 0.01 1\n.step dec param Rload 0.1k 100meg 3
+* *Use old model\n.param Leq = 6.797433e+01\n.param Req = 5.196815e+08\n.param Ceq = 5.791988e-07\n.param Veq = 7.973054e+05\n.param f = 42\n.param Cp = 3.364591e-07
+* *Use new model\n.param Leq = 2.953846e-08\n.param Req = 6.191716e-01\n.param Ceq = 2.112500e-07\n.param Veq = 2.752084e+01\n.param f = 42\n.param Cp = 1.252091e-07
+* .include component_sweep.lib
+.model 1 ako:TIP31C
+.model 2 ako:TIP32C
+.model 3 ako:BAT54
+.param npn = 1
+.param pnp = 2
+.param Diode = 3
+.include equiv_model.lib
+.include other_models.lib
+* .include large_sweep.lib
+* .include lowpow_sweep.lib
+* .include combine_sweep.lib
+* .model 1 ako:BSS4130A\n.model 2 ako:BSS5130A\n.model 3 ako:MBR0520L\n \n.param npn = 1\n.param pnp = 2\n.param Diode = 3
+.backanno
+.end

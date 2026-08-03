@@ -1,0 +1,17 @@
+* NPNs
+.model 1 ako:2N2222
+.model 2 ako:2N3904
+.model 3 ako:TIP31C
+
+* PNPs
+.model 4 ako:TIP32C
+.model 5 ako:BSS63A
+
+* Schotcky Diodes
+.model 6 ako:BAT54
+.model 7 ako:MBR0520L
+.model 8 ako:MURS120
+ 
+.step param npn list 1 2 3
+.step param pnp list 4 5
+.step param Diode list 6 7 8

@@ -5,7 +5,7 @@ frequency excitation match with LpCp oscilation frequency (in PSSHI just
 use Lp, no switch)
 forward voltage underwater at 220 db
 underwater extracted power bottleneck (design diode forward voltage)
-dif freq, area, piezo type, rload, crect
+dif freq, area, piezo type, rload, crect, diode drop
 
 - Action items that I noted down:
         * implement PSSHI control as a circuit design (assuming that it is doable for you; ok to fail and then discuss next week with insights as to where you are stuck)
@@ -19,4 +19,5 @@ Jodh: Please also have a summary of the things you have implemented and tested, 
 	* You could apply multi-frequency (or broadband random) signals to the Simulink simulation.
 	* Your Simulink simulation includes a circuit model for controlling SSHI switches.
 	* Some key results and findings 
-
+transformer
+multiple freq/amplitude sine wave

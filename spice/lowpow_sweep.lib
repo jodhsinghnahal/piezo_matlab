@@ -1,0 +1,56 @@
+* P-SSHI DEVICE SWEEP FOR 1.7 V MAX PIEZO, nA/uA CURRENT
+*
+* Set NPN transistor Value to: {npn}
+* Set PNP transistor Value to: {pnp}
+* Set swept diode Value to:    {Diode}
+*
+* Active sweep size: 3 NPN x 3 PNP x 5 diodes = 45 runs.
+*
+* IMPORTANT:
+* - TIP31C/TIP32C and other power BJTs are intentionally excluded.
+* - At nA/uA current, leakage, low-current gain and junction capacitance matter
+*   more than ampere rating or low high-current on-resistance.
+* - Compare harvested load power, startup success and switching timing, not only
+*   peak inductor current.
+
+* -----------------------------------------------------------------------------
+* NPN CANDIDATES
+* -----------------------------------------------------------------------------
+* 2N5089: very high nominal gain and low junction capacitance
+* BC847C: high-gain small-signal SMD transistor
+* 2N3904: common baseline model
+.model 1 ako:2N5089
+.model 2 ako:BC847C
+.model 3 ako:2N3904
+
+* -----------------------------------------------------------------------------
+* PNP CANDIDATES
+* -----------------------------------------------------------------------------
+* 2N5087: low-capacitance small-signal PNP
+* BC857C: high-gain small-signal SMD PNP
+* 2N3906: common baseline model
+.model 4 ako:2N5087
+.model 5 ako:BC857C
+.model 6 ako:2N3906
+
+* -----------------------------------------------------------------------------
+* DIODE CANDIDATES
+* -----------------------------------------------------------------------------
+* RB751CM-40: low-current, very-low-capacitance Schottky candidate
+* BAT54: common low-current Schottky benchmark
+* BAS40HY: low-capacitance Schottky benchmark
+* MMSD4148: very-low-capacitance silicon diode; lower leakage but higher Vf
+* 1N4148: common silicon reference
+.model 7  ako:RB751CM-40
+.model 8  ako:BAT54
+.model 9  ako:BAS40HY
+.model 10 ako:MMSD4148
+.model 11 ako:1N4148
+
+* -----------------------------------------------------------------------------
+* ACTIVE SWEEPS
+* -----------------------------------------------------------------------------
+.step param npn list 1 2 3
+.step param pnp list 4 5 6
+.step param Diode list 7 8 9 10 11
+

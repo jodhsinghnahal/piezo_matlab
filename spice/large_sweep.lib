@@ -1,0 +1,66 @@
+* P-SSHI RECOMMENDED DEVICE-MODEL SWEEP
+* Reduced to devices that are meaningfully different and worth testing
+* for a low-voltage piezoelectric P-SSHI switching/rectifier circuit.
+*
+* Set NPN transistor Value to: {npn}
+* Set PNP transistor Value to: {pnp}
+* Set swept diode Value to:    {Diode}
+*
+* Active sweep size: 7 NPN x 7 PNP x 8 diodes = 392 runs.
+
+* -----------------------------------------------------------------------------
+* NPN CANDIDATES
+* 2N3904: low-current reference
+* 2N2222: general-purpose higher-current reference
+* BC817-40T116: high-gain 500 mA SMD device
+* BSS4130A: high-gain 1 A low-resistance device
+* BSS64A: 100 V device for higher P-SSHI voltage
+* 2N5550: 150 V device for high-voltage operation
+* TIP31C: 3 A power-device reference
+* -----------------------------------------------------------------------------
+.model 1 ako:2N3904
+.model 2 ako:2N2222
+.model 3 ako:BC817-40T116
+.model 4 ako:BSS4130A
+.model 5 ako:BSS64A
+.model 6 ako:2N5550
+.model 7 ako:TIP31C
+
+* -----------------------------------------------------------------------------
+* PNP CANDIDATES
+* Selected as corresponding or comparable PNP devices to the NPN set.
+* -----------------------------------------------------------------------------
+.model 8  ako:2N3906
+.model 9  ako:2N2907
+.model 10 ako:BC807-40T116
+.model 11 ako:BSS5130A
+.model 12 ako:BSS63A
+.model 13 ako:2N5401
+.model 14 ako:TIP32C
+
+* -----------------------------------------------------------------------------
+* DIODE CANDIDATES
+* BAT54: low-current, low-capacitance Schottky reference
+* MBR0520L: 0.5 A low-voltage Schottky
+* 1N5817: common 1 A low-voltage Schottky
+* PMEG2010EA: modern 1 A low-VF Schottky
+* NSR20F30NXT5G: very-low-voltage Schottky candidate
+* MBR0540: 40 V Schottky for more voltage margin
+* BAT46WJ: 100 V, relatively low-capacitance Schottky
+* MURS120: fast silicon diode control/reference
+* -----------------------------------------------------------------------------
+.model 15 ako:BAT54
+.model 16 ako:MBR0520L
+.model 17 ako:1N5817
+.model 18 ako:PMEG2010EA
+.model 19 ako:NSR20F30NXT5G
+.model 20 ako:MBR0540
+.model 21 ako:BAT46WJ
+.model 22 ako:MURS120
+
+* -----------------------------------------------------------------------------
+* ACTIVE SWEEPS
+* -----------------------------------------------------------------------------
+.step param npn list 1 2 3 4 5 6 7
+.step param pnp list 8 9 10 11 12 13 14
+.step param Diode list 15 16 17 18 19 20 21 22
