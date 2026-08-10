@@ -1,7 +1,24 @@
 Circuit: * Z:\home\jodh\piezo_matlab\spice\peh.asc
 
-Per .tran options, skipping operating point for transient analysis.
+WARNING: Node N092 is floating.
+WARNING: Node N072 is floating.
+WARNING: Node N074 is floating.
+WARNING: Node NC_18 is floating.
+WARNING: Node NC_19 is floating.
 
+WARNING: Less than two connections to node N072.  This node is used by R36.
+WARNING: Less than two connections to node N071.  This node is used by V11.
+Per .tran options, skipping operating point for transient analysis.
+Changing Tseed to 1e-008
+
+req_result: 519681456.972207=5.19681e+008
+ceq_result: 5.79198750091799e-007=5.79199e-007
+leq_result: 67.9743345827381=67.9743
+cp_result: 3.364591368864e-007=3.36459e-007
+veq_result: 252130.119547715=252130
+voc_result: 5.46419291282733=5.46419
+pressure_peak_result: 1414213.5623731=1.41421e+006
+veq_per_pa_result: 0.178282917273563=0.178283
 
 Measurement "pavg_r9" FAIL'ed
 
@@ -10,21 +27,21 @@ Measurement "pavg_r4" FAIL'ed
 Measurement "pavg_r12" FAIL'ed
 
 
-Date: Mon Aug 03 11:47:41 2026
-Total elapsed time: 38.170 seconds.
+Date: Sun Aug 09 21:52:44 2026
+Total elapsed time: 96.731 seconds.
 
 tnom = 27
 temp = 27
 method = modified trap
-totiter = 5216998
-traniter = 5216998
-tranpoints = 2189295
-accept = 1526841
-rejected = 662454
-matrix size = 90
-fillins = 86
+totiter = 3266673
+traniter = 3266673
+tranpoints = 1166075
+accept = 817743
+rejected = 348331
+matrix size = 266
+fillins = 194
 solver = Normal
-Thread vector: 4.2/3.6[2] 2.0/2.1[1] 0.5/1.2[1] 0.2/1.0[1]  2592/500
-Matrix Compiler1:     556 opcodes  1.9/[0.7]/0.7
-Matrix Compiler2: 8.60 KB object code size  0.5/0.7/[0.5]
+Thread vector: 32.0/14.7[7] 11.4/6.7[7] 3.8/4.0[1] 0.7/1.6[1]  2592/500
+Matrix Compiler1: 26.44 KB object code size  8.0/3.2/[1.7]
+Matrix Compiler2: 24.18 KB object code size  2.6/4.4/[1.5]
 

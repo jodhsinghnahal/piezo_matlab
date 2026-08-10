@@ -1,11 +1,12 @@
 clear; clc; close all;
-f_test = 2.0148e+06;
+f_test = 42;
 CrossCircuitTest = "BJT";
 Type_test = "PSSHI";
 WindingRatio_test = 1.0;
+idk;
+
 % C1Test = 0.022;
 % switchFracTest = 0.05;
-idk;
 
 % Simscape pwr = 0.009678 mW
 % Rload = 5.994843e+04; power = 0.029468 mW

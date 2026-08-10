@@ -74,7 +74,7 @@ useUnderwaterPaperModel = true;
 if useUnderwaterPaperModel
     uwMaterial = "PZT";          % "PZT" or "PVDF"
     uwArea_m2 = 2e-3;            % use 2e-3 or 20e-3 m^2 for PZT
-    SPL_dB = 230;  p_ref = 1e-6;            % dB re 1 uPa for underwater
+    SPL_dB = 250;  p_ref = 1e-6;            % dB re 1 uPa for underwater
     pw_rms = p_ref * 10^(SPL_dB/20);
     uwPressureAmp_Pa = sqrt(2) * pw_rms;      % peak acoustic pressure amplitude, Pa
 
@@ -165,7 +165,7 @@ stopTime_single = 5.0;
 t_start_ss_single = 3.0;
 
 % Load sweep settings
-doSweep = true;
+doSweep = false;
 
 %fast mode
 fast_mode = true;
@@ -212,9 +212,7 @@ G_open   = 1e-8;
 blankingTime = 0.25 / f;    % prevents repeated triggering near zero
 tEnable = 3 / f;            % delay switching until startup settles
 Ieps = 1e-7;                % current deadband for zero-cross detection
-
-% zero cross circ 3 params:
-Sres = 1e-2;
+Sres = 1e-2;                % zero cross circ 3 params:
 Pcond = 1e-6;
 
 % Paper P-SSHI inversion factor, Eq. 22: gamma = -exp(-pi/(2Q))
@@ -261,7 +259,7 @@ elseif any(strcmpi(string(Type), ["PSSHI","P-SSHI","SSSHI","S-SSHI"]))
     if fast_mode
         maxStep = min(T/400, Tsw/5.5); % fast
     else
-        maxStep = min(T/400, Tsw/10);
+        maxStep = min(T/4000, Tsw/40);
     end
 end
 
@@ -1185,13 +1183,16 @@ function plotSingleRun(r)
     ylabel("Voltage (V)");
 
     yyaxis right;
-    plot(r.t_cycle, r.ieq_cycle_eff, "-.r", "LineWidth", 1.4);
-    plot(r.t_cycle, r.irect_cycle, "-y", "LineWidth", 1.4);
 
     cutoff = 100; % no cutoff
     if string(r.Type) == "PSSHI"
-        cutoff = 0.0003;
+        cutoff = 0.005;
     end
+
+    ieq_plot = MyUtils.removeSpikes(r.ieq_cycle_eff, cutoff);
+    plot(r.t_cycle, ieq_plot, "-.r", "LineWidth", 1.4);
+    plot(r.t_cycle, r.irect_cycle, "-y", "LineWidth", 1.4);
+
     ip_plot = MyUtils.removeSpikes(r.ip_cycle, cutoff);
     plot(r.t_cycle, ip_plot, "-.m", "LineWidth", 1.4);
 
@@ -1199,7 +1200,7 @@ function plotSingleRun(r)
     % Switch version: flipOn_cycle comes from flip_sim.
     % BJT version: flipOn_cycle comes from abs(iL1) or abs(iL2).
     if isfield(r, "flipOn_cycle") && ~isempty(r.flipOn_cycle) && any(r.flipOn_cycle)
-        Iscale = 0.8 * max(abs([r.ieq_cycle_eff(:); r.irect_cycle(:); ip_plot(:)]), [], "omitnan");
+        Iscale = 0.8 * max(abs([ieq_plot(:); r.irect_cycle(:); ip_plot(:)]), [], "omitnan");
         if ~isfinite(Iscale) || Iscale <= 0
             Iscale = 1;
         end

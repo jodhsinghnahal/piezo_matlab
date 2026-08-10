@@ -10,7 +10,7 @@
 .param modelSel=0
  
 .param A=2e-3
-.param SPL_dB=250
+.param SPL_dB=240
 .param f=42
 * ------------------------------------------------
  
@@ -94,14 +94,14 @@
  
 .param Veq_per_Pa={Veq/pw_amp}
  
-*.meas tran Req_result PARAM {Req}
-*.meas tran Ceq_result PARAM {Ceq}
-*.meas tran Leq_result PARAM {Leq}
-*.meas tran Cp_result PARAM {Cp}
-*.meas tran Veq_result PARAM {Veq}
-*.meas tran Voc_result PARAM {Voc_calc}
-*.meas tran pressure_peak_result PARAM {pw_amp}
-*.meas tran Veq_per_Pa_result PARAM {Veq_per_Pa}
+.meas tran Req_result PARAM {Req}
+.meas tran Ceq_result PARAM {Ceq}
+.meas tran Leq_result PARAM {Leq}
+.meas tran Cp_result PARAM {Cp}
+.meas tran Veq_result PARAM {Veq}
+.meas tran Voc_result PARAM {Voc_calc}
+.meas tran pressure_peak_result PARAM {pw_amp}
+.meas tran Veq_per_Pa_result PARAM {Veq_per_Pa}
 
 .meas tran Pavg_R9 AVG (I(R9)*I(R9)*{Rload}) FROM 1.001190476 TO 1.024999
 .meas tran Pavg_R4 AVG (I(R4)*I(R4)*{Rload}) FROM 1.001190476 TO 1.024999
