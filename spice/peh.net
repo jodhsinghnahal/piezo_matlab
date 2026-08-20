@@ -277,7 +277,7 @@ L27 N070 0 {Ls/2} Rser={Rs}
 .model NMOS NMOS
 .model PMOS PMOS
 .lib C:\users\jodh\My Documents\LTspiceXVII\lib\cmp\standard.mos
-.tran 0 5.025 5 uic
+.tran 0 5.025 5 100u uic
 .param Rload=5.994843e+04
 .param Crect=1uF
 .param Rsw= 84
@@ -364,5 +364,8 @@ K15 L53 L54 {k}
 *.include transformer_sweep1.lib
 K16 L24 L25 {k}
 K17 L26 L27 {k}
+.options reltol=1e-5
+.options abstol=1e-15
+.options vntol=1e-9
 .backanno
 .end
