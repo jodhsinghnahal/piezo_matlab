@@ -1,37 +1,66 @@
 Circuit: * Z:\home\jodh\piezo_matlab\spice\peh.asc
 
-WARNING: Node N152 is floating.
-WARNING: Node N126 is floating.
-WARNING: Node N108 is floating.
-WARNING: Node N092 is floating.
-WARNING: Node N068 is floating.
-WARNING: Node N076 is floating.
-WARNING: Node N044 is floating.
-WARNING: Node N028 is floating.
-WARNING: Node N011 is floating.
-WARNING: Node N263 is floating.
+WARNING: Node N109 is floating.
+WARNING: Node N130 is floating.
 
-WARNING: Less than two connections to node N178.  This node is used by L54.
 Per .tran options, skipping operating point for transient analysis.
-Ignoring empty pin current: Ix(u2:11)
-Ignoring empty pin current: Ix(u2:16)
-Heightened Def Con from 0.128641 to 0.128641
 
-Date: Tue Aug 11 12:46:11 2026
-Total elapsed time: 4.003 seconds.
+req_result: 519681456.972207=5.19681e+008
+ceq_result: 5.79198750091799e-007=5.79199e-007
+leq_result: 67.9743345827381=67.9743
+cp_result: 3.364591368864e-007=3.36459e-007
+veq_result: 252.130119547715=252.13
+voc_result: 0.00546419291282731=0.00546419
+f_result: 42=42
+db_result: 180=180
+lp_result: 42.6785205284876=42.6785
+ls_result: 10.6696301321219=10.6696
+pressure_peak_result: 1414.2135623731=1414.21
+veq_per_pa_result: 0.178282917273563=0.178283
+zout_re_result: 0.24408427924174=0.244084
+zout_im_result: -11262.5962309662=-11262.6
+zout_mag_result: 11262.5962336111=11262.6
+req_eqs_result: 519681456.972207=5.19681e+008
+ceq_eqs_result: 5.79198750091799e-007=5.79199e-007
+leq_eqs_result: 67.9743345827381=67.9743
+cp_eqs_result: 3.364591368864e-007=3.36459e-007
+veq_eqs_result: 252.130119547715=252.13
+voc_eqs_result: 0.00546419291282731=0.00546419
+zout_re_eqs_result: 0.24408427924174=0.244084
+zout_im_eqs_result: -11262.5962309662=-11262.6
+zout_mag_eqs_result: 11262.5962336111=11262.6
+req_eqp_result: 519681456.972207=5.19681e+008
+ceq_eqp_result: 5.79198750091799e-007=5.79199e-007
+leq_eqp_result: 67.9743345827381=67.9743
+cp_eqp_result: 3.364591368864e-007=3.36459e-007
+veq_eqp_result: 252.130119547715=252.13
+voc_eqp_result: 0.00546419291282731=0.00546419
+zout_re_eqp_result: 0.24408427924174=0.244084
+zout_im_eqp_result: -11262.5962309662=-11262.6
+zout_mag_eqp_result: 11262.5962336111=11262.6
+
+Measurement "pavg_r9" FAIL'ed
+
+Measurement "pavg_r4" FAIL'ed
+
+Measurement "pavg_r12" FAIL'ed
+
+
+Date: Thu Aug 20 11:14:22 2026
+Total elapsed time: 0.828 seconds.
 
 tnom = 27
 temp = 27
 method = modified trap
-totiter = 59136
-traniter = 59136
-tranpoints = 23372
-accept = 16252
-rejected = 7121
-matrix size = 599
-fillins = 428
+totiter = 30933
+traniter = 30933
+tranpoints = 11130
+accept = 7650
+rejected = 3480
+matrix size = 328
+fillins = 199
 solver = Normal
-Thread vector: 31.5/12.6[12] 22.3/7.9[12] 7.0/4.7[8] 1.5/2.6[1]  2592/500
-Matrix Compiler1: 55.45 KB object code size  18.5/7.3/[4.3]
-Matrix Compiler2: 53.80 KB object code size  6.2/10.0/[3.2]
+Thread vector: 17.6/8.0[8] 10.2/4.7[8] 1.9/2.9[1] 0.6/1.6[1]  2592/500
+Matrix Compiler1: 27.18 KB object code size  8.1/3.5/[1.9]
+Matrix Compiler2: 27.82 KB object code size  3.9/5.0/[1.3]
 

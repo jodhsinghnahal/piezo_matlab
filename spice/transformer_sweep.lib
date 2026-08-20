@@ -1,0 +1,37 @@
+; ============================================================
+; REAL TRANSFORMER SWEEP
+; XF:
+; 1 = Lundahl LL1545A - config C reversed, 2:1 step-down
+; 2 = Lundahl LL1545A - config D reversed, 2:1 step-down
+; 3 = Lundahl LL1646 - reversed, 2:1 step-down
+; 4 = Lundahl LL1949 - 2:1
+; 5 = Lundahl LL1968 - 2:1
+; 6 = Hammond 850QA - configured 2:1
+; 7 = Hammond 850JA - n = 0.3536
+; 8 = Hammond 850JA - n = 0.7071
+; ============================================================
+
+.step param XF list 1 2 3 4 5 6 7 8
+
+; Turns ratio Ns/Np
+.param n_turns=table(XF,1,0.5,2,0.5,3,0.5,4,0.5,5,0.5,6,0.5,7,0.3536,8,0.7071)
+
+; Primary inductance
+.param Lp=table(XF,1,318,2,79.6,3,63.7,4,50,5,30,6,380,7,15.39,8,3.848)
+
+; Secondary inductance
+.param Ls={Lp*n_turns*n_turns}
+
+; Primary winding resistance
+.param Rp=table(XF,1,590,2,147,3,90,4,162,5,142,6,4.89k,7,346,8,86.5)
+
+; Secondary winding resistance
+.param Rs=table(XF,1,147,2,37,3,22,4,40,5,43,6,1.245k,7,46,8,46)
+
+; Coupling coefficient
+.param Kxf=table(XF,1,0.999,2,0.999,3,0.999,4,0.999,5,0.999,6,0.999,7,0.9995,8,0.9995)
+
+
+K15 L53 L54 {Kxf}
+ 
+.param Rsec=1e6

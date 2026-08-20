@@ -10,15 +10,14 @@
 .param materialSel=1
 
 * modelSel: 0 = old/original, 1 = updated Eq. (28)-(32)
-.param modelSel=1
+.param modelSel=0
 
 * Number of identical piezoelectric elements
-.param N=10
+.param N=1
 
 .param A=2e-3
-.param SPL_dB=230
+.param SPL_dB=180
 .param f=42
-
 
 * =============================================================
 * CONSTANTS
@@ -242,6 +241,10 @@
 .meas tran Veq_result PARAM {Veq}
 
 .meas tran Voc_result PARAM {Voc_calc}
+.meas tran f_result PARAM {f}
+.meas tran db_result PARAM {SPL_dB}
+.meas tran Lp_result PARAM {Lp}
+.meas tran Ls_result PARAM {Ls}
 
 .meas tran pressure_peak_result PARAM {pw_amp}
 .meas tran Veq_per_Pa_result PARAM {Veq/pw_amp}
