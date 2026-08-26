@@ -74,7 +74,7 @@ useUnderwaterPaperModel = false;
 if useUnderwaterPaperModel
     uwMaterial = "PZT";          % "PZT" or "PVDF"
     uwArea_m2 = 2e-3;            % use 2e-3 or 20e-3 m^2 for PZT
-    SPL_dB = 180;  p_ref = 1e-6;            % dB re 1 uPa for underwater
+    SPL_dB = 230;  p_ref = 1e-6;            % dB re 1 uPa for underwater
     pw_rms = p_ref * 10^(SPL_dB/20);
     uwPressureAmp_Pa = sqrt(2) * pw_rms;      % peak acoustic pressure amplitude, Pa
 
@@ -168,7 +168,7 @@ t_start_ss_single = 3.0;
 doSweep = true;
 
 %fast mode
-fast_mode = false;
+fast_mode = true;
 
 % Avoid going too high unless you allow very long simulations.
 % With Crect = 1e-6, Rload = 10 MOhm gives tau = 10 s.
