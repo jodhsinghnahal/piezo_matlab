@@ -21,5 +21,15 @@
 .param Kxfmr=table(XFMR, 0,1, 1,0.995, 2,0.995, 3,0.995, 4,0.995, 5,0.995, 6,0.995)
 
 K15 L53 L54 {Kxfmr}
+K16 L2 L3 {Kxfmr}
  
 .param Rsec=1e6
+
+.param L_series1 = 1/((2*pi*f)**2 * Cp)
+.param L_series2 = 1/((2*pi*f)**2 * (Cp + Ceq))
+.param BestLp={if(modelSel==1,L_series2,L_series1)}
+.param Ctotal = 1/((2*pi*f)**2 * Lp)
+.param Cb = {Ctotal-Cp}
+.param Rp2=20
+.param Rs2=5
+.param BestLs = {BestLp*n_turns*n_turns}

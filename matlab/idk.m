@@ -69,7 +69,7 @@ Crect = 1e-6;     % F
 %   VSrc_eq_amp = |Veq| from Eq. (6), driven by acoustic pressure amplitude.
 %
 % Set false to keep the old Liang/Liao beam example values.
-useUnderwaterPaperModel = true;
+useUnderwaterPaperModel = false;
 
 if useUnderwaterPaperModel
     uwMaterial = "PZT";          % "PZT" or "PVDF"
@@ -142,8 +142,8 @@ fprintf('.param Cp = %.6e\n', Cp);
 % return;
 
 % If each diode is about 0.5 V, total bridge drop is about 1.0 V.
-Vd_single = 0.25;
-% Vd_single = 0.05;
+% Vd_single = 0.25;
+Vd_single = 0.5;
 VF_bridge = 2 * Vd_single;       % total conducting bridge drop, V
 r_single = 0.03; % the on resistance
 
@@ -168,12 +168,12 @@ t_start_ss_single = 3.0;
 doSweep = true;
 
 %fast mode
-fast_mode = true;
+fast_mode = false;
 
 % Avoid going too high unless you allow very long simulations.
 % With Crect = 1e-6, Rload = 10 MOhm gives tau = 10 s.
-Rload_list = logspace(3, 7, 10);     % 10 kOhm to 10 MOhm
-% Rload_list = logspace(4, 7, 20);     % 10 kOhm to 10 MOhm
+% Rload_list = logspace(3, 7, 10);     % 10 kOhm to 10 MOhm
+Rload_list = logspace(4, 7, 20);     % 10 kOhm to 10 MOhm
 % Rload_list = logspace(4, 6.7, 20);     % 10 kOhm to 10 MOhm
 % Rload_list = logspace(7, 8, 5);     % 10 kOhm to 10 MOhm
 

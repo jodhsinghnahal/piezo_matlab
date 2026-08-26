@@ -16,7 +16,7 @@
 .param N=1
 
 .param A=2e-3
-.param SPL_dB=180
+.param SPL_dB=230
 .param f=42
 
 * =============================================================
@@ -245,60 +245,10 @@
 .meas tran db_result PARAM {SPL_dB}
 .meas tran Lp_result PARAM {Lp}
 .meas tran Ls_result PARAM {Ls}
+.meas tran Ctotal_result PARAM {Ctotal}
+.meas tran Cb_result PARAM {Cb}
+.meas tran BestLp_result PARAM {BestLp}
+.meas tran BestLs_result PARAM {BestLs}
 
 .meas tran pressure_peak_result PARAM {pw_amp}
 .meas tran Veq_per_Pa_result PARAM {Veq/pw_amp}
-
-
-* =============================================================
-* SINGLE PIEZO IMPEDANCE MEASUREMENTS
-* =============================================================
-
-.meas tran Zout_Re_result PARAM {Zout_Re}
-.meas tran Zout_Im_result PARAM {Zout_Im}
-.meas tran Zout_mag_result PARAM {Zout_mag}
-
-
-* =============================================================
-* SERIES ARRAY MEASUREMENTS
-* =============================================================
-
-.meas tran Req_eqS_result PARAM {Req_eqS}
-.meas tran Ceq_eqS_result PARAM {Ceq_eqS}
-.meas tran Leq_eqS_result PARAM {Leq_eqS}
-.meas tran Cp_eqS_result PARAM {Cp_eqS}
-.meas tran Veq_eqS_result PARAM {Veq_eqS}
-
-.meas tran Voc_eqS_result PARAM {Voc_eqS}
-
-.meas tran Zout_Re_eqS_result PARAM {Zout_Re_eqS}
-.meas tran Zout_Im_eqS_result PARAM {Zout_Im_eqS}
-.meas tran Zout_mag_eqS_result PARAM {Zout_mag_eqS}
-
-
-* =============================================================
-* PARALLEL ARRAY MEASUREMENTS
-* =============================================================
-
-.meas tran Req_eqP_result PARAM {Req_eqP}
-.meas tran Ceq_eqP_result PARAM {Ceq_eqP}
-.meas tran Leq_eqP_result PARAM {Leq_eqP}
-.meas tran Cp_eqP_result PARAM {Cp_eqP}
-.meas tran Veq_eqP_result PARAM {Veq_eqP}
-
-.meas tran Voc_eqP_result PARAM {Voc_eqP}
-
-.meas tran Zout_Re_eqP_result PARAM {Zout_Re_eqP}
-.meas tran Zout_Im_eqP_result PARAM {Zout_Im_eqP}
-.meas tran Zout_mag_eqP_result PARAM {Zout_mag_eqP}
-
-
-* =============================================================
-* LOAD POWER MEASUREMENTS
-* =============================================================
-
-.meas tran Pavg_R9 AVG (I(R9)*I(R9)*{Rload}) FROM 1.001190476 TO 1.024999
-
-.meas tran Pavg_R4 AVG (I(R4)*I(R4)*{Rload}) FROM 1.001190476 TO 1.024999
-
-.meas tran Pavg_R12 AVG (I(R12)*I(R12)*{Rload}) FROM 1.001190476 TO 1.024999

@@ -33,5 +33,15 @@
 
 
 K15 L53 L54 {Kxf}
+K16 L2 L3 {1}
  
 .param Rsec=1e6
+
+.param L_series1 = 1/((2*pi*f)**2 * Cp)
+.param L_series2 = 1/((2*pi*f)**2 * (Cp + Ceq))
+.param BestLp={if(modelSel==1,L_series2,L_series1)}
+.param Ctotal = 1/((2*pi*f)**2 * Lp)
+.param Cb = {Ctotal-Cp}
+.param Rp2=0
+.param Rs2=0
+.param BestLs = {BestLp*n_turns*n_turns}
