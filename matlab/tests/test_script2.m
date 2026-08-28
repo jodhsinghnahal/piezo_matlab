@@ -4,70 +4,70 @@ WindingRatio_test = 0.03;
 
 % Type_test = "SEH";
 % f_test = 1;
-% idk;
+% main;
 % f_test = 10;
-% idk;
+% main;
 % f_test = 100;
-% idk;
+% main;
 % f_test = 1000;
-% idk;
+% main;
 % f_test = 10000;
-% idk;
+% main;
 % f_test = 100000;
-% idk;
+% main;
 % f_test = 1000000;
-% idk;
+% main;
 
 Type_test = "SEH";
 % f_test = 1;
-% idk;
+% main;
 % f_test = 10;
-% idk;
+% main;
 % f_test = 100;
-% idk;
+% main;
 f_test = 42;
-idk;
+main;
 
 WindingRatio_test = 0.10;
-idk;
+main;
 
 WindingRatio_test = 0.25;
-idk;
+main;
 
 WindingRatio_test = 0.50;
-idk;
+main;
 
 WindingRatio_test = 1.0;
-idk;
+main;
 
 WindingRatio_test = 1.5;
-idk;
+main;
 
 WindingRatio_test = 2.0;
-idk;
+main;
 
 WindingRatio_test = 3.0;
-idk;
+main;
 
 % f_test = 10000;
-% idk;
+% main;
 % f_test = 100000;
-% idk;
+% main;
 % f_test = 1000000;
-% idk;
+% main;
 
 % Type_test = "SSSHI";
 % f_test = 1;
-% idk;
+% main;
 % f_test = 10;
-% idk;
+% main;
 % f_test = 100;
-% idk;
+% main;
 % f_test = 1000;
-% idk;
+% main;
 % f_test = 10000;
-% idk;
+% main;
 % f_test = 100000;
-% idk;
+% main;
 % f_test = 1000000;
-% idk;
+% main;

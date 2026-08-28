@@ -15,6 +15,7 @@
 * Number of identical piezoelectric elements
 .param N=1
 
+* Piezo area, dB level and frequency
 .param A=2e-3
 .param SPL_dB=230
 .param f=42
