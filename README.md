@@ -1,4 +1,4 @@
-# Piezoelectric Energy Harvesting: MATLAB/Simscape, LTspice, and PCB Models
+# Piezoelectric Energy Harvesting: MATLAB/Simscape, LTspice, PCB Models and Latex Thesis
 
 Simulation, circuit and PCB design repository for investigating **piezoelectric energy harvesting (PEH)** interfaces under conventional vibration excitation and underwater acoustic excitation.
 

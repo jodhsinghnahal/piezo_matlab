@@ -1,11 +1,11 @@
-name: Compile LaTeX, Commit, and Save Artifact
+name: Compile Overleaf Submodule, Commit, and Save Artifact
 
 on:
   push:
     branches:
       - main
     paths-ignore:
-      - "*.pdf" # Crucial: Prevents an infinite loop when the bot pushes the PDF
+      - '*.pdf' # Prevents an infinite loop when pushing the PDF back
 
 jobs:
   build_and_track:
@@ -13,25 +13,49 @@ jobs:
     permissions:
       contents: write # Allows the workflow to push the PDF back to your repository
     steps:
-      - name: Set up Git repository
+      - name: Set up main repository (without submodules)
         uses: actions/checkout@v4
+        with:
+          submodules: false # We handle authentication manually below
 
-      - name: Compile LaTeX document
+      - name: Authenticate and Update Overleaf Submodule
+        run: |
+          # 1. Parse the existing Overleaf URL from your .gitmodules file
+          ORIGINAL_URL=$(git config --file .gitmodules --get submodule.your-submodule-folder-name.url)
+          
+          # 2. Inject your email/username and secret token into the URL
+          # Format: https://your_email%40domain.com:token@://overleaf.com
+          # Replace 'your-email@example.com' below with your Overleaf login email (escaped %40 for the @ symbol)
+          AUTH_URL=$(echo "$ORIGINAL_URL" | sed "s|https://|https://nahal.jodhsingh%40gmail.com:${{ secrets.OVERLEAF_PASSWORD }}@|")
+          
+          # 3. Synchronize Git configuration and fetch the submodule files
+          git submodule init
+          git config submodule.your-submodule-folder-name.url "$AUTH_URL"
+          git submodule update --init --recursive
+        env:
+          OVERLEAF_PASSWORD: ${{ secrets.OVERLEAF_PASSWORD }}
+
+      - name: Compile LaTeX document inside Submodule
         uses: xu-cheng/latex-action@v3
         with:
-          root_file: latex/main.tex
+          root_file: main.tex
+          working_directory: latex
 
-      - name: Commit and push PDF to root
+      - name: Move and Push PDF to Main Repository Root
         run: |
-          git config --local user.email "github-actions[bot]@://github.com"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
+          
+          # Move the compiled PDF from the submodule directory to the main root folder
+          mv latex/main.pdf ./main.pdf
+          
           git add main.pdf
-
+          
           if git diff --staged --quiet; then
             echo "No changes detected in the compiled PDF."
           else
             git commit -m "chore: update compiled PDF [skip ci]"
-            git push
+            git push origin main
           fi
 
       - name: Upload PDF Artifact
