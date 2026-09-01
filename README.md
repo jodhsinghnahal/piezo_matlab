@@ -30,7 +30,9 @@ This has the higher level Simscape analysis which was best for numerical equatio
 It contains the piezoelectric equivalent circuit, SEH/ P-SSHI/ S-SSHI interface variants, waveform processing, equivalent-impedance calculations, paper-equation comparisons, power calculations, and load sweeps.
 
 **Add folders to path to run them:**
+
 **Option 1:** after running script from `matlab/tests/` or `matlab/figures/`, add to path when asked in popup.
+
 **Option 2:** or run these cmds to make permanent:
 
 ```matlab
