@@ -427,6 +427,8 @@ Save Overleaf password (only get asked once):
 git config --global credential.helper store
 ```
 
+Git pushing inside `latex/` will auto update it on Overleaf and git pulling inside `latex/` will pull any changes from Overleaf.
+
 ---
 
 # Software
