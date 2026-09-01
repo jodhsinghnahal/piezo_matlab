@@ -16,21 +16,14 @@ jobs:
       - name: Set up main repository (without submodules)
         uses: actions/checkout@v4
         with:
-          submodules: false # We handle authentication manually below
+          submodules: false # We handle authentication cleanly below
 
       - name: Authenticate and Update Overleaf Submodule
         run: |
-          # 1. Parse the existing Overleaf URL from your .gitmodules file
-          ORIGINAL_URL=$(git config --file .gitmodules --get submodule.your-submodule-folder-name.url)
+          # 1. Automatically rewrite any standard git.overleaf.com URL to include your credentials globally on this runner
+          git config --global url."https://nahal.jodhsingh%40gmail.com:${{ secrets.OVERLEAF_PASSWORD }}@://overleaf.com".insteadOf "https://://overleaf.com"
           
-          # 2. Inject your email/username and secret token into the URL
-          # Format: https://your_email%40domain.com:token@://overleaf.com
-          # Replace 'your-email@example.com' below with your Overleaf login email (escaped %40 for the @ symbol)
-          AUTH_URL=$(echo "$ORIGINAL_URL" | sed "s|https://|https://nahal.jodhsingh%40gmail.com:${{ secrets.OVERLEAF_PASSWORD }}@|")
-          
-          # 3. Synchronize Git configuration and fetch the submodule files
-          git submodule init
-          git config submodule.your-submodule-folder-name.url "$AUTH_URL"
+          # 2. Synchronize Git configuration and fetch the submodule files natively
           git submodule update --init --recursive
         env:
           OVERLEAF_PASSWORD: ${{ secrets.OVERLEAF_PASSWORD }}
