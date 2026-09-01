@@ -20,8 +20,9 @@ jobs:
 
       - name: Authenticate and Update Overleaf Submodule
         run: |
-          # 1. Catch the specific "https://git@git.overleaf.com/" string from your logs and rewrite it cleanly
-          git config --global url."https://nahal.jodhsingh%40gmail.com:${{ secrets.OVERLEAF_PASSWORD }}@git.overleaf.com/".insteadOf "https://git@git.overleaf.com/"
+          # 1. Overleaf requires the username to be "git" and the password to be the token.
+          # This rule safely maps your secrets token using the mandatory Overleaf format.
+          git config --global url."https://git:${{ secrets.OVERLEAF_PASSWORD }}@git.overleaf.com/".insteadOf "https://git@git.overleaf.com/"
           
           # 2. Synchronize Git configuration and fetch the submodule files natively
           git submodule update --init --recursive
