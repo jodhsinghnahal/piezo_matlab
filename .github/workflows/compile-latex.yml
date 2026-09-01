@@ -20,8 +20,8 @@ jobs:
 
       - name: Authenticate and Update Overleaf Submodule
         run: |
-          # 1. Automatically rewrite any standard git.overleaf.com URL to include your credentials globally on this runner
-          git config --global url."https://nahal.jodhsingh%40gmail.com:${{ secrets.OVERLEAF_PASSWORD }}@://overleaf.com".insteadOf "https://://overleaf.com"
+          # 1. Catch the specific "https://git@git.overleaf.com/" string from your logs and rewrite it cleanly
+          git config --global url."https://nahal.jodhsingh%40gmail.com:${{ secrets.OVERLEAF_PASSWORD }}@git.overleaf.com/".insteadOf "https://git@git.overleaf.com/"
           
           # 2. Synchronize Git configuration and fetch the submodule files natively
           git submodule update --init --recursive
@@ -36,7 +36,7 @@ jobs:
 
       - name: Move and Push PDF to Main Repository Root
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.email "github-actions[bot]@://github.com"
           git config --local user.name "github-actions[bot]"
           
           # Move the compiled PDF from the submodule directory to the main root folder
