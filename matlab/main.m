@@ -96,7 +96,7 @@ if useUnderwaterPaperModel
     fprintf("Leq = %.6e H\n", L);
     fprintf("Cp  = %.6e F\n", Cp);
     fprintf("|Veq| = %.6e V\n", VSrc_eq_amp);
-    fprintf("|Voc,piezo| from divider = %.6e V\n", uw.Voc_piezo_amp);
+    fprintf("Calculated |Voc,piezo| = %.6e V\n", uw.Voc_piezo_amp);
     fprintf("Approx factor |Veq|/p_w = %.6e V/Pa\n", abs(uw.Veq_phasor)/uw.pw_amp);
     opts = {'old', 'new'};
     fprintf('*Use %s model\n', opts{useNewModel + 1});
@@ -128,23 +128,23 @@ else
     fprintf("Leq = %.6e H\n", L);
     fprintf("Cp  = %.6e F\n", Cp);
     fprintf("|Veq| = %.6e V\n", VSrc_eq_amp);
-    fprintf("|Voc,piezo| from divider = %.6e V\n", openCircuitVoltage);
+    fprintf("Calculated |Voc,piezo| = %.6e V\n", openCircuitVoltage);
 end
 
 % Print in SPICE .param format
-fprintf('.param Leq = %.6e\n', L);
-fprintf('.param Req = %.6e\n', R);
-fprintf('.param Ceq = %.6e\n', C);
-fprintf('.param Veq = %.6e\n', VSrc_eq_amp);
-fprintf('.param f = %d\n', f);
-fprintf('.param Cp = %.6e\n', Cp);
+% fprintf('.param Leq = %.6e\n', L);
+% fprintf('.param Req = %.6e\n', R);
+% fprintf('.param Ceq = %.6e\n', C);
+% fprintf('.param Veq = %.6e\n', VSrc_eq_amp);
+% fprintf('.param f = %d\n', f);
+% fprintf('.param Cp = %.6e\n', Cp);
 
 % return;
 
 % If each diode is about 0.5 V, total bridge drop is about 1.0 V.
 % Vd_single = 0.25;
 Vd_single = 0.5;
-VF_bridge = 2 * Vd_single;       % total conducting bridge drop, V
+VF_bridge = 2 * Vd_single;  % total conducting bridge drop, V
 r_single = 0.03; % the on resistance
 
 C1 = 2.2e-9*9;
@@ -168,14 +168,14 @@ t_start_ss_single = 3.0;
 doSweep = true;
 
 %fast mode
-fast_mode = true;
+fast_mode = false;
 
 % Avoid going too high unless you allow very long simulations.
 % With Crect = 1e-6, Rload = 10 MOhm gives tau = 10 s.
-% Rload_list = logspace(3, 7, 10);     % 10 kOhm to 10 MOhm
-Rload_list = logspace(4, 7, 20);     % 10 kOhm to 10 MOhm
-% Rload_list = logspace(4, 6.7, 20);     % 10 kOhm to 10 MOhm
-% Rload_list = logspace(7, 8, 5);     % 10 kOhm to 10 MOhm
+% Rload_list = logspace(3, 7, 10);
+Rload_list = logspace(4, 7, 20);    % 20 logarithmically spaced points from 10 kOhm to 10 MOhm
+% Rload_list = logspace(4, 6.7, 20);
+% Rload_list = logspace(7, 8, 5);
 
 if fast_mode
     % fast simulations
@@ -215,20 +215,19 @@ Ieps = 1e-7;                % current deadband for zero-cross detection
 Sres = 1e-2;                % zero cross circ 3 params:
 Pcond = 1e-6;
 
-% Paper P-SSHI inversion factor, Eq. 22: gamma = -exp(-pi/(2Q))
+% Paper SSHI inversion factor, Eq. 22: gamma = -exp(-pi/(2Q))
 % IMPORTANT: Rsw should be the TOTAL resistance in the Cp-Li switching loop
 %            (switch Ron + inductor ESR + wiring/other series resistance).
 paper_gamma = -0.7;          % table 1
 Q_needed = -1 * pi / (2 * log(-1 * paper_gamma));
 Rloop_total = sqrt(Li/Cp) / Q_needed;
-Rsw = Rloop_total - R_closed;   % switching-loop resistance, ohm
-% Rsw = Rsw + 300;
-Rsw = 84;
+Rsw = Rloop_total - R_closed;   % calculated from quality factor
+% Rsw = 84; % directly specified value
 % Rloop_total = Rsw + R_closed;
 % Li = (Q_needed^2) * (Rloop_total^2) * Cp;
 
 Qsshi = sqrt(Li/Cp) / Rloop_total;
-gamma_psshi = -exp(-pi/(2*Qsshi));
+gamma_sshi = -exp(-pi/(2*Qsshi));
 
 % omega0 = 1/sqrt(Li*Cp);
 % omega_d = omega0 * sqrt(1 - 1/(4*Qsshi^2));
@@ -240,7 +239,7 @@ gamma_psshi = -exp(-pi/(2*Qsshi));
 if strcmpi(string(Type), "SEH")
     gamma = 1;
 elseif any(strcmpi(string(Type), ["PSSHI","P-SSHI","SSSHI","S-SSHI"]))
-    gamma = gamma_psshi;
+    gamma = gamma_sshi;
 else
     error("Unsupported Type '%s'. Use SEH, PSSHI, or SSSHI.", char(string(Type)));
 end
@@ -259,7 +258,7 @@ elseif any(strcmpi(string(Type), ["PSSHI","P-SSHI","SSSHI","S-SSHI"]))
     if fast_mode
         maxStep = min(T/400, Tsw/5.5); % fast
     else
-        maxStep = min(T/4000, Tsw/40);
+        maxStep = min(T/400, Tsw/10);
     end
 end
 
@@ -274,7 +273,7 @@ set_param(model, "FastRestart", "off");
 %% ============================================================
 % MEASURE ACTUAL OPEN-CIRCUIT VOC
 % ============================================================
-measureOC = false;
+measureOC = true;
 
 if measureOC
     fprintf("\n============================================================\n");
@@ -310,6 +309,7 @@ else
             VSrc_eq_amp * ZCp_oc / (Zseries_oc + ZCp_oc) ...
             );
     end
+    fprintf("Calculated open-circuit Voc fundamental amplitude = %.6f V\n", openCircuitVoltage);
 end
 
 %% ============================================================
@@ -320,7 +320,7 @@ fprintf("\n============================================================\n");
 fprintf("SINGLE DETAILED %s RUN\n", char(string(Type)));
 fprintf("============================================================\n");
 
-single = runOneSEH(fast_mode, model, vpName, vcapName, vstoreName, ieqName, irectName, ipName, flipName, iL1Name, iL2Name, ...
+single = runOnePEH(fast_mode, model, vpName, vcapName, vstoreName, ieqName, irectName, ipName, flipName, iL1Name, iL2Name, ...
     L, R, C, Cp, Crect, Rload_single, VF_bridge, VSrc_eq_amp, ...
     f, stopTime_single, t_start_ss_single, maxStep, ...
     Type, CrossCircuitType, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
@@ -365,7 +365,7 @@ if doSweep
             k, N, Rload_k, tauRC, stopTime_k);
 
         try
-            sweepResults(k) = runOneSEH(fast_mode, model, vpName, vcapName, vstoreName, ieqName, irectName, ipName, flipName, iL1Name, iL2Name, ...
+            sweepResults(k) = runOnePEH(fast_mode, model, vpName, vcapName, vstoreName, ieqName, irectName, ipName, flipName, iL1Name, iL2Name, ...
                 L, R, C, Cp, Crect, Rload_k, VF_bridge, VSrc_eq_amp, ...
                 f, stopTime_k, t_start_ss_k, maxStep, ...
                 Type, CrossCircuitType, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
@@ -423,7 +423,7 @@ fprintf('Total execution time: %.4f seconds.\n', totalTime);
 % LOCAL FUNCTIONS
 % ============================================================
 
-function result = runOneSEH(fast_mode, model, vpName, vcapName, vstoreName, ieqName, irectName, ipName, flipName, iL1Name, iL2Name, ...
+function result = runOnePEH(fast_mode, model, vpName, vcapName, vstoreName, ieqName, irectName, ipName, flipName, iL1Name, iL2Name, ...
     L, R, C, Cp, Crect, Rload, VF_bridge, VSrc_eq_amp, ...
     f, stopTime, t_start_ss, maxStep, ...
     Type, CrossCircuitType, Li, Rsw, R_closed, G_open, Threshold, Tsw, blankingTime, ...
@@ -697,7 +697,7 @@ function result = runOneSEH(fast_mode, model, vpName, vcapName, vstoreName, ieqN
     Pinterface_inst = vp_ss .* (interfaceCurrentSign * ip_ss);
     Pinterface_avg = trapz(t_ss, Pinterface_inst) / (t_ss(end) - t_ss(1));
 
-    %% Paper SEH / P-SSHI values at the Simscape operating point
+    %% Paper SEH / SSHI values at the Simscape operating point
     Voc_sim = I0 / (w * Cp);
     Vrect_sim = Vstore_avg + VF_bridge;
     Vtilde_sim = Vrect_sim / Voc_sim;

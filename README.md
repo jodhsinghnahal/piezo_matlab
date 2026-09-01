@@ -29,28 +29,43 @@ This has the higher level Simscape analysis which was best for numerical equatio
 
 It contains the piezoelectric equivalent circuit, SEH/ P-SSHI/ S-SSHI interface variants, waveform processing, equivalent-impedance calculations, paper-equation comparisons, power calculations, and load sweeps.
 
+**Add folders to path to run them:**
+**Option 1:** after running script from `matlab/tests/` or `matlab/figures/`, add to path when asked in popup.
+**Option 2:** or run these cmds to make permanent:
+
+```matlab
+savepath(fullfile(userpath, 'pathdef.m'))
+edit(fullfile(userpath, 'startup.m'))
+fprintf(fopen(fullfile(userpath, 'startup.m'), 'a+'), '\npath(pathdef);\n'); fclose('all');
+
+addpath("tests");
+addpath("figures");
+addpath(genpath("figures"));
+savepath;
+```
+
 ## `matlab/main.m`
 
 **The main MATLAB analysis script.**
 
 It:
 
-1. chooses the harvesting interface (`SEH`, `PSSHI`, or `SSSHI`);
-2. chooses the switching implementation (`Switch`, `BJT`, or `NoSwitch`);
-3. selects the Liang/Liao vibration benchmark or underwater equivalent model;
-4. calculates the equivalent source parameters and open-circuit voltage;
-5. runs `simscape_model.slx`;
-6. extracts steady-state signals;
-7. isolates one final steady-state cycle;
-8. fits the fundamental components of `vp` and `ieq`;
-9. calculates `Zelec_sim = Vp,F / Ieq,F`;
-10. calculates the corresponding Liang/Liao analytical impedance;
-11. decomposes the electrical impedance into `Rh`, `Rd`, and `XE`;
-12. calculates harvested and extracted power;
-13. measures SSHI switching timing;
-14. performs an `Rload` sweep;
-15. finds the optimum load; and
-16. produces waveform, impedance, and power plots.
+1. chooses the harvesting interface (`SEH`, `PSSHI`, or `SSSHI`)
+2. chooses the switching implementation (`Switch`, `BJT`, or `NoSwitch`)
+3. selects the Liang/Liao vibration benchmark or underwater equivalent model
+4. calculates the equivalent source parameters and open-circuit voltage
+5. runs `simscape_model.slx`
+6. extracts steady-state signals
+7. isolates one final steady-state cycle
+8. fits the fundamental components of `vp` and `ieq`
+9. calculates `Zelec_sim = Vp,F / Ieq,F`
+10. calculates the corresponding Liang/Liao analytical impedance
+11. decomposes the electrical impedance into `Rh`, `Rd`, and `XE`
+12. calculates harvested and extracted power
+13. measures SSHI switching timing
+14. performs an `Rload` sweep
+15. finds the optimum load
+16. produces waveform, impedance, and power plots
 
 ### Main inputs
 
@@ -78,28 +93,79 @@ main;
 Inside `main.m`:
 
 ```matlab
-useUnderwaterPaperModel = false;
-```
-
-Use `false` for the Liang/Liao vibration benchmark and `true` for the underwater acoustic equivalent model.
-
-```matlab
 fast_mode = true;
 ```
 
 Use fast_mode `true` for running sim faster but slightly less accuracy.
 
 ```matlab
+doSweep = true;
+Rload_list = logspace(4, 7, 20);    % 20 logarithmically spaced points from 10 kOhm to 10 MOhm
+```
+
+Set doSweep `true` if running logarithmic Rload sweep.
+
+```matlab
+useUnderwaterPaperModel = false;
+```
+
+Use `false` for the Liang/Liao vibration benchmark and `true` for the underwater acoustic equivalent model.
+
+```matlab
 useNewModel = false;
 ```
 
-This selects between the two equivalent underwater formulations used during development.
+This selects between the two equivalent underwater formulations.
 
 ```matlab
 SPL_dB = 230;
 ```
 
 This sets the decibels sound level for the underwater model.
+
+```matlab
+Vd_single = 0.5;
+VF_bridge = 2 * Vd_single;  % total conducting bridge drop, V
+```
+
+Diode and bridge rectifier forward voltage.
+
+```matlab
+Li = 47e-3;
+Rsw = Rloop_total - R_closed;   % calculated from quality factor
+Rsw = 84; % directly specified value
+
+C1 = 2.2e-9*9;
+Vbe = 0.55;
+curGain = 25;
+Vd_BJT = 0.25;
+```
+
+SSHI inductor/ resistor values and for self powered switching specific BJT/capacitor values.
+
+```matlab
+measureOC = true;
+```
+
+Set to true to measure piezo open circuit voltage with no interface circuit from simulation, otherwise use calculated open circuit voltage from circuit values. Used in extracted and harvested power calculation (to calculate Veq, instead of using directly).
+
+**Main Causes of Slight Results Discrepencies:** 
+- Using fast_mode (different step size/ simulation time) or not
+- Different range and number of test points for Rload_list
+- Diode forward voltage values
+- Li inductor value and its series Rsw for SSHI
+- Which open circuit voltage/ Veq value used in extracted and harvested power calculation (simulation measured or calculated)
+- Code function changed from using mean to trapz since data points can have slightly different time steps in between
+
+```matlab
+    % Before
+    Pload_inst = vstore_ss.^2 ./ Rload;
+    Pload_avg = mean(Pload_inst, "omitnan");
+
+    % After
+    Pload_inst = vstore_ss.^2 ./ Rload;
+    Pload_avg = trapz(t_ss, Pload_inst) / (t_ss(end) - t_ss(1));
+```
 
 ---
 
@@ -140,28 +206,65 @@ Static utility class used by the main analysis.
 
 It contains reusable functions for:
 
-- reading Simulink signals;
-- converting signal formats to time/data vectors;
-- cleaning simulation data;
-- extracting fundamental harmonic amplitude and phase;
-- measuring open-circuit voltage;
-- estimating rectifier conduction/blocked angle;
-- zero-crossing detection;
-- SSHI switch timing;
-- underwater equivalent-circuit calculations; and
-- simulation/result-processing helpers.
+- reading Simulink signals
+- converting signal formats to time/data vectors
+- cleaning simulation data
+- extracting fundamental harmonic amplitude and phase
+- measuring open-circuit voltage
+- estimating rectifier conduction/blocked angle
+- zero-crossing detection
+- SSHI switch timing
+- underwater equivalent-circuit calculations
+- simulation/result-processing helpers
 
 ---
 
-## `matlab/GetFiguresData.m`
+## `matlab/figures/*`
 
-Exports numerical data from open MATLAB figures to `Fig.mat`.
+Contains figures, data and stdout from Simulation runs and code for reconstructing figures.
+
+```matlab
+load('matlab/figures/SEH/all_figures_data.mat'); % Load matlab data to workspace
+openfig('matlab/figures/SEH/figs/Figure_1.fig'); % Open saved figure
+```
+
+Settings used for all the data collection:
+
+```matlab
+% Type_Test was changed to "SEH", "PSSHI" or "SSSHI"
+% and the data was stored in the respective folder
+Type_test = "SEH", "PSSHI", "SSSHI";
+
+f_test = 42;
+CrossCircuitTest = "Switch";
+WindingRatio_test = 1.0;
+
+% Single-run load
+if strcmpi(string(Type), "SSSHI")
+    Rload_single = 1e5;
+else
+    Rload_single = 1e6;
+end
+
+useUnderwaterPaperModel = false;
+Vd_single = 0.5;
+doSweep = true;
+fast_mode = false;
+Rload_list = logspace(4, 7, 20);
+Li = 47e-3;
+paper_gamma = -0.7;
+measureOC = true;
+```
+
+## `matlab/figures/GetFiguresData.m`
+
+Saves open MATLAB plot/figures as fig and png files to `matlab/figures/{Type}/figs/` and exports numerical data from these plot/figures to `matlab/figures/{Type}/all_figures_data.mat` file.
 
 ---
 
-## `matlab/RegenFigure.m`
+## `matlab/figures/RegenFigure.m`
 
-Reconstructs a waveform plot from `Fig.mat`.
+Reconstructs a waveform plot from the saved `matlab/figures/{Type}/all_figures_data.mat` file and saves it to `matlab/figures/{Type}/regen_figs/`.
 
 ---
 

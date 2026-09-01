@@ -1,0 +1,180 @@
+>> test_script4
+
+===== LIANG/LIAO EXPERIMENTAL EQUIVALENT CIRCUIT =====
+Acceleration (rms) = 10.00 m/s^2, Peak = 14.1421 m/s^2
+Req = 1.000000e+06 ohm
+Ceq = 4.480000e-10 F
+Leq = 3.100000e+04 H
+Cp  = 3.469000e-08 F
+|Veq| = 2.082429e+02 V
+Calculated |Voc,piezo| = 2.121431e+01 V
+
+============================================================
+MEASURING ACTUAL OPEN-CIRCUIT TRANSDUCER VOLTAGE
+============================================================
+
+===== ACTUAL OPEN-CIRCUIT MEASUREMENT =====
+Measured open-circuit Voc fundamental amplitude = 20.036179 V
+Measured open-circuit Voc peak-to-peak = 40.105779 V
+Measured open-circuit Voc half peak-to-peak = 20.052889 V
+
+============================================================
+SINGLE DETAILED SSSHI RUN
+============================================================
+
+===== Simscape SSSHI Results =====
+Rload = 1.000000e+05 ohm
+Average harvested/load power = 1.586700 mW
+Average Vstore = 12.589103 V
+Vrect = Vstore + VF_bridge = 13.589103 V
+Peak-to-peak vp = 78.247782 V
+Peak-to-peak ieq_eff = 3.207585e-04 A
+
+===== Fundamental Components =====
+Fundamental ieq amplitude I0 = 1.603566e-04 A
+Fundamental vp amplitude = 32.863571 V
+Current sign used = +1
+
+===== Paper-Style SSSHI Estimates =====
+Voc = I0/(wCp) = 17.516739 V
+Measured actual open-circuit Voc = 20.036179 V
+Vtilde_rect = 0.775778
+Vtilde_F = 0.057088
+gamma = -0.70000000, Qsshi = 4.4040
+theta_paper = NaN because Vtilde_rect is outside the valid range for this interface
+
+===== Equivalent Electrical Impedance =====
+Zelec_sim = 1.717465e+05 + j-1.118204e+05 ohm
+Zelec_paper = 1.767186e+05 + j-1.092362e+05 ohm
+Normalized Zelec_sim: Re*wCp = 1.572249, Im*wCp = -1.023657
+Normalized Zelec_paper: Re*wCp = 1.617766, Im*wCp = -1.000000
+
+===== SSSHI Impedance Decomposition =====
+Rd = 4.971274e+04 ohm
+Rh = 1.270059e+05 ohm
+XE = -1.092362e+05 ohm
+XL = 8.180707e+06 ohm
+XC = -8.458490e+06 ohm
+Zmech = 1.000000e+06 + j-2.777825e+05 ohm
+Rd + Rh = 1.767186e+05 ohm
+Re(Zelec_paper) = 1.767186e+05 ohm
+Im(Zelec_paper) = -1.092362e+05 ohm
+
+===== Harvested vs Extracted Power =====
+Simscape harvested/load power Vstore^2/Rload = 1.586700 mW
+Interface input power mean(vp*ip) = 2.201958 mW
+Time-domain extracted power mean(vp*ieq_eff) = 2.208082 mW
+Fundamental extracted power 0.5*Re(Zelec)*I0^2 = 2.208164 mW
+Eq. 42 harvested power = 1.600862 mW
+Eq. 43 extracted power = 2.227472 mW
+Underwater Eq. 29 Vrect = NaN V, Vs = NaN V
+Underwater Eq. 29 harvested/load power = NaN mW
+Predicted dissipated power = 0.626611 mW
+
+===== Equivalent Source =====
+Veq_amp inferred from measured open-circuit Voc = 196.678274 V
+Ideal VSrc_eq_amp used in model source = 208.242947 V
+
+===== Switch / Flip Timing, Final Cycle =====
+Flip source = flip_sim
+Expected ideal LC half-period Tsw = 126.853 us
+i_eq zero-crossings in final cycle:
+  ZC 1: absolute 4.986919635 s, cycle 0.010727756 s
+  ZC 2: absolute 4.998824456 s, cycle 0.022632576 s
+Event 1: closed from 4.986936334 s to 4.987062741 s absolute (cycle 0.010744454 s to 0.010870861 s)
+         duration = 126.407 us
+         nearest i_eq zero-cross = 4.986919635 s absolute (cycle 0.010727756 s)
+         switch delay from zero-cross = 16.699 us
+Event 2: closed from 4.998847836 s to 4.998974242 s absolute (cycle 0.022655957 s to 0.022782362 s)
+         duration = 126.406 us
+         nearest i_eq zero-cross = 4.998824456 s absolute (cycle 0.022632576 s)
+         switch delay from zero-cross = 23.381 us
+
+============================================================
+RUNNING Rload SWEEP
+============================================================
+
+[01/20] Rload = 1.0000e+04 ohm, tau = 0.010 s, StopTime = 5.000 s
+
+[02/20] Rload = 1.4384e+04 ohm, tau = 0.014 s, StopTime = 5.000 s
+
+[03/20] Rload = 2.0691e+04 ohm, tau = 0.021 s, StopTime = 5.000 s
+
+[04/20] Rload = 2.9764e+04 ohm, tau = 0.030 s, StopTime = 5.000 s
+
+[05/20] Rload = 4.2813e+04 ohm, tau = 0.043 s, StopTime = 5.000 s
+Warning: maxDynamicUniformBuffersPerPipelineLayout artificially reduced from 1000000 to 16 to fit dynamic offset allocation limit.
+Warning: maxDynamicStorageBuffersPerPipelineLayout artificially reduced from 1000000 to 16 to fit dynamic offset allocation limit.
+
+[06/20] Rload = 6.1585e+04 ohm, tau = 0.062 s, StopTime = 5.000 s
+
+[07/20] Rload = 8.8587e+04 ohm, tau = 0.089 s, StopTime = 5.000 s
+
+[08/20] Rload = 1.2743e+05 ohm, tau = 0.127 s, StopTime = 5.000 s
+
+[09/20] Rload = 1.8330e+05 ohm, tau = 0.183 s, StopTime = 5.000 s
+
+[10/20] Rload = 2.6367e+05 ohm, tau = 0.264 s, StopTime = 5.000 s
+
+[11/20] Rload = 3.7927e+05 ohm, tau = 0.379 s, StopTime = 5.000 s
+
+[12/20] Rload = 5.4556e+05 ohm, tau = 0.546 s, StopTime = 5.000 s
+
+[13/20] Rload = 7.8476e+05 ohm, tau = 0.785 s, StopTime = 5.000 s
+
+[14/20] Rload = 1.1288e+06 ohm, tau = 1.129 s, StopTime = 5.644 s
+
+[15/20] Rload = 1.6238e+06 ohm, tau = 1.624 s, StopTime = 8.119 s
+
+[16/20] Rload = 2.3357e+06 ohm, tau = 2.336 s, StopTime = 11.679 s
+
+[17/20] Rload = 3.3598e+06 ohm, tau = 3.360 s, StopTime = 16.799 s
+
+[18/20] Rload = 4.8329e+06 ohm, tau = 4.833 s, StopTime = 24.165 s
+
+[19/20] Rload = 6.9519e+06 ohm, tau = 6.952 s, StopTime = 34.760 s
+
+[20/20] Rload = 1.0000e+07 ohm, tau = 10.000 s, StopTime = 50.000 s
+
+============================================================
+SWEEP COMPLETE
+============================================================
+    valid    Rload_ohm     Vstore_avg_V    Vrect_V    Voc_V     Vtilde_rect    Vtilde_F    theta_paper_rad    theta_sim_rough_rad    theta_sim_exact_rad    Pload_avg_W    Pinterface_avg_W    Pdelta_time_W    Pdelta_fundamental_W    Ph_eq42_auto_W    Pdelta_eq43_auto_W    Vrect_eq29_V    Vs_eq29_V    Pload_eq29_W    Re_Zelec_sim_ohm    Im_Zelec_sim_ohm    Re_Zelec_paper_ohm    Im_Zelec_paper_ohm      Rd_ohm        Rh_ohm        XE_ohm         XL_ohm        XC_ohm         R            Zmech             I0_A       VpF_amp_V    Veq_amp_V    currentSign    gamma    Qsshi    openCircuitVoltage     Type      stopTime_s    t_start_ss_s
+    _____    __________    ____________    _______    ______    ___________    ________    _______________    ___________________    ___________________    ___________    ________________    _____________    ____________________    ______________    __________________    ____________    _________    ____________    ________________    ________________    __________________    __________________    __________    __________    ___________    __________    ___________    _____    _________________    __________    _________    _________    ___________    _____    _____    __________________    _______    __________    ____________
+
+    true          10000        3.049        4.049     13.896      0.29138      0.071965          NaN                  NaN                    NaN             0.0010349         0.0042127         0.0042301            0.0042317           0.00091913           0.0041889            NaN            NaN           NaN            5.2302e+05         -1.0779e+05           5.5849e+05           -1.0924e+05        4.3595e+05    1.2254e+05    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00012721     67.931       196.68           1         -0.7     4.404          20.036          "SSSHI"           5           3.75
+    true          14384       4.1206       5.1206     14.272      0.35879      0.070069          NaN                  NaN                    NaN             0.0012458         0.0040627         0.0040812            0.0040823            0.0011681           0.0040458            NaN            NaN           NaN            4.7832e+05         -1.0913e+05           5.0536e+05           -1.0924e+05        3.5945e+05    1.4591e+05    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00013065     64.098       196.68           1         -0.7     4.404          20.036          "SSSHI"           5           3.75
+    true          20691       5.4321       6.4321     14.757      0.43586      0.067764          NaN                  NaN                    NaN             0.0014645         0.0038513         0.0038706            0.0038716            0.0014152           0.0038447            NaN            NaN           NaN            4.2428e+05         -1.1034e+05           4.4462e+05           -1.0924e+05        2.8096e+05    1.6366e+05    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00013509     59.224       196.68           1         -0.7     4.404          20.036          "SSSHI"           5           3.75
+    true          29764       6.9625       7.9625     15.337      0.51917      0.065202          NaN                  NaN                    NaN               0.00165         0.0035687         0.0035856            0.0035869            0.0016221           0.0035731            NaN            NaN           NaN            3.6393e+05         -1.0965e+05           3.7896e+05           -1.0924e+05        2.0692e+05    1.7204e+05    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i     0.0001404     53.364       196.68           1         -0.7     4.404          20.036          "SSSHI"           5           3.75
+    true          42813        8.644        9.644     15.985      0.60332      0.062559          NaN                  NaN                    NaN             0.0017562         0.0032143         0.0032265            0.0032264             0.001746           0.0032288            NaN            NaN           NaN            3.0135e+05         -1.1168e+05           3.1264e+05           -1.0924e+05        1.4358e+05    1.6906e+05    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00014633     47.028       196.68           1         -0.7     4.404          20.036          "SSSHI"           5           3.75
+    true          61585       10.379       11.379     16.657      0.68312      0.060035          NaN                  NaN                    NaN             0.0017545         0.0027999         0.0028109            0.0028118            0.0017584           0.0028221            NaN            NaN           NaN            2.4186e+05           -1.12e+05           2.4975e+05           -1.0924e+05             94133    1.5561e+05    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00015249     40.642       196.68           1         -0.7     4.404          20.036          "SSSHI"           5           3.75
+    true          88587       12.057       13.057     17.312      0.75422      0.057765          NaN                  NaN                    NaN             0.0016433          0.002351          0.002357            0.0023568             0.001657           0.0023792            NaN            NaN           NaN            1.8768e+05         -1.1201e+05           1.9371e+05           -1.0924e+05             58801    1.3491e+05    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00015848     34.638       196.68           1         -0.7     4.404          20.036          "SSSHI"           5           3.75
+    true     1.2743e+05       13.577       14.577     17.905      0.81413       0.05585          NaN                  NaN                    NaN             0.0014477         0.0019056         0.0019087             0.001909            0.0014673            0.001935            NaN            NaN           NaN            1.4211e+05         -1.1128e+05           1.4649e+05           -1.0924e+05             35410    1.1108e+05    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00016391     29.585       196.68           1         -0.7     4.404          20.036          "SSSHI"           5           3.75
+    true      1.833e+05       14.879       15.879     18.414      0.86231      0.054306          NaN                  NaN                    NaN             0.0012082         0.0014952         0.0014978            0.0014972            0.0012302           0.0015225            NaN            NaN           NaN            1.0538e+05         -1.1099e+05           1.0852e+05           -1.0924e+05             20836         87686    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00016857     25.799       196.68           1         -0.7     4.404          20.036          "SSSHI"           5           3.75
+    true     2.6367e+05       15.942       16.942     18.829      0.89982       0.05311          NaN                  NaN                    NaN            0.00096412          0.001141          0.001142             0.001142           0.00098412           0.0011623            NaN            NaN           NaN                 76871         -1.1074e+05                78960           -1.0924e+05             12104         66856    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00017237     23.236       196.68           1         -0.7     4.404          20.036          "SSSHI"           5           3.75
+    true     3.7927e+05       16.772       17.772     19.153       0.9279       0.05221          NaN                  NaN                    NaN            0.00074179        0.00085044        0.00085078           0.00085073           0.00075978          0.00086763            NaN            NaN           NaN                 55344         -1.1036e+05                56821           -1.0924e+05            7063.2         49758    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00017534     21.647       196.68           1         -0.7     4.404          20.036          "SSSHI"           5           3.75
+    true     5.4556e+05       17.401       18.401       19.4      0.94852      0.051548          NaN                  NaN                    NaN            0.00055503        0.00062253        0.00062292           0.00062285           0.00057107          0.00063667            NaN            NaN           NaN                 39497         -1.1009e+05                40574           -1.0924e+05            4180.2         36393    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00017759     20.772       196.68           1         -0.7     4.404          20.036          "SSSHI"           5           3.75
+    true     7.8476e+05       17.865       18.865     19.581       0.9634      0.051069          NaN                  NaN                    NaN            0.00040669        0.00044976        0.00045024            0.0004502           0.00042128          0.00046176            NaN            NaN           NaN                 28021          -1.098e+05                28848           -1.0924e+05            2529.1         26319    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00017926     20.313       196.68           1         -0.7     4.404          20.036          "SSSHI"           5           3.75
+    true     1.1288e+06       18.203       19.203     19.714      0.97406      0.050725          NaN                  NaN                    NaN            0.00029352        0.00032333         0.0003232           0.00032232           0.00030648          0.00033192            NaN            NaN           NaN                 19793         -1.0966e+05                20441           -1.0924e+05              1567         18874    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00018047      20.11       196.68           1         -0.7     4.404          20.036          "SSSHI"      5.6442         4.2331
+    true     1.6238e+06       18.445       19.445     19.809      0.98161      0.050482          NaN                  NaN                    NaN            0.00020951        0.00022996        0.00022956           0.00022949           0.00022144          0.00023782            NaN            NaN           NaN                 13957         -1.0954e+05                14497           -1.0924e+05            998.47         13498    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00018134     20.024       196.68           1         -0.7     4.404          20.036          "SSSHI"      8.1189         6.0892
+    true     2.3357e+06       18.615       19.615     19.876      0.98687      0.050312          NaN                  NaN                    NaN            0.00014836        0.00016305         0.0001634           0.00016334           0.00016014          0.00017099            NaN            NaN           NaN                9867.1         -1.0944e+05                10349           -1.0924e+05            656.57        9692.4    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00018195     19.994       196.68           1         -0.7     4.404          20.036          "SSSHI"      11.679          8.759
+    true     3.3598e+06       18.737       19.737     19.923      0.99062      0.050192          NaN                  NaN                    NaN            0.00010449        0.00011539        0.00011603           0.00011598           0.00011544          0.00012275            NaN            NaN           NaN                6973.2         -1.0939e+05               7391.2           -1.0924e+05             440.3        6950.9    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00018239     19.992       196.68           1         -0.7     4.404          20.036          "SSSHI"      16.799         12.599
+    true     4.8329e+06       18.823       19.823     19.957      0.99329      0.050107          NaN                  NaN                    NaN            7.3314e-05        8.2103e-05        8.2363e-05           8.2398e-05           8.3165e-05          8.8175e-05            NaN            NaN           NaN                4937.1         -1.0934e+05               5290.1           -1.0924e+05            300.58        4989.6    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i     0.0001827     19.997       196.68           1         -0.7     4.404          20.036          "SSSHI"      24.165         18.123
+    true     6.9519e+06       18.884       19.884     19.981      0.99515      0.050048          NaN                  NaN                    NaN            5.1295e-05        5.8837e-05         5.886e-05           5.8958e-05           6.0419e-05          6.3929e-05            NaN            NaN           NaN                3524.3         -1.0931e+05               3825.8           -1.0924e+05            210.04        3615.7    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00018291     20.005       196.68           1         -0.7     4.404          20.036          "SSSHI"       34.76          26.07
+    true          1e+07       18.926       19.926     19.997      0.99644      0.050007          NaN                  NaN                    NaN            3.5819e-05        4.2483e-05        4.3208e-05            4.278e-05           4.4431e-05          4.6946e-05            NaN            NaN           NaN                2553.1         -1.0929e+05               2804.4           -1.0924e+05            150.22        2654.2    -1.0924e+05    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00018306     20.012       196.68           1         -0.7     4.404          20.036          "SSSHI"          50           37.5
+
+
+===== OPTIMUM FROM SIMSCAPE LOAD SWEEP =====
+Optimum Rload = 4.281332e+04 ohm
+Maximum harvested/load power = 1.756248 mW
+Vstore_avg = 8.643952 V
+Vrect = 9.643952 V
+Vtilde_rect = 0.603317
+theta_paper = NaN rad = NaN deg
+Zelec_sim = 3.013464e+05 + j-1.116789e+05 ohm
+Zelec_paper = 3.126423e+05 + j-1.092362e+05 ohm
+
+Saved:
+  ssshi_single_result in base workspace
+  ssshi_sweep_results and ssshi_sweep_table if doSweep=true
+Total execution time: 1386.5481 seconds.
