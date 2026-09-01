@@ -416,6 +416,19 @@ contain imported third-party items such as symbols, footprints and STEP / 3D mod
 
 ---
 
+# Latex Thesis
+
+## `latex/`
+
+Contains Overleaf git submodule with the thesis and figures. `.github/workflows/compile-latex.yml` will compile it into a pdf and save to root folder and as an artifact.
+
+Save Overleaf password (only get asked once):
+```text
+git config --global credential.helper store
+```
+
+---
+
 # Software
 
 - MATLAB Version 26.1 (R2026a)
