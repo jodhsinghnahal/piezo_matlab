@@ -7,9 +7,15 @@ s.matlab.appearance.figure.GraphicsTheme.TemporaryValue = 'light';
 % Get figure data from file
 matFile = 'figures/' + Type + '/all_figures_data.mat';
 
+FigName = 'Single_Run_One_Cycle';
+
 % Output regenerated figure
-outputFolder = 'figures/' + Type + '/regen_figs/';
-FigName = 'SingleRun_One_Cycle';
+outputFolder = 'figures/' + Type + '/regen_figs/' + FigName;
+
+% Output same regenerated figure to latex folder
+outputFolder2 = '../../latex/figures/' + Type + '_' + FigName ;
+scriptDir = fileparts(mfilename('fullpath'));
+outputPath = fullfile(scriptDir, outputFolder2);
 
 data = load(matFile);
 jsonText = jsonencode(data, 'PrettyPrint', true);
@@ -21,33 +27,59 @@ disp(fields);
 figData = data.extractedData.SingleRun_One_CycleAbsoluteWaveforms;
 
 % Create figure with publication-ready dimensions
-% Typical column width for papers: ~3-3.5 inches (76-89 mm)
-hFig = figure('Units', 'inches', 'Position', [1, 1, 4.5, 3.2]);
+hFig = figure( ...
+    'Units', 'inches', ...
+    'Position', [1, 1, 5, 3], ...
+    'WindowState', 'normal'); % piexel size = (width,height) inch * 300 DPI
+
 set(hFig, 'Color', 'white');
 
 hAx = axes('Parent', hFig);
 hold(hAx, 'on');
 
-% Professional color scheme (distinguishable, print-friendly, no pure colors)
 colors = [
-    0.0000 0.4470 0.7410  % Blue
-    0.6350 0.0780 0.1840  % Maroon/Dark Red
-    0.2500 0.6000 0.2500  % Forest Green (not bright)
-    0.8000 0.5000 0.0000  % Dark Orange
-    0.4940 0.1840 0.5560  % Purple
-    0.2000 0.5000 0.7000  % Teal
-    0.7000 0.3000 0.4000  % Plum
+    0.0000 0.4500 0.7400  % Blue        (Simscape V_p)
+    0.8500 0.1000 0.1000  % Red       (Simscape i_eq - Right Axis)
+    0.0000 0.9500 0.1000  % Green 
+    0.4940 0.1840 0.5560  % Purple       (V_p Fundamental)
+    0.3010 0.7450 0.9330  % Cyan
+    0.6350 0.0780 0.1840  % Maroon
+    1.0000, 0.5000, 0.0000 % Orange     (Ideal Paper V_p)
+    0.0000, 0.4000, 0.0500 % Dark Green
 ];
 
-% change specs accordingly with professional styling
 specs = [
-    struct('key', 'SimscapeV_p', 'label', 'Simscape $v_p$',    'axis', 'left',  'style', '-',  'lw', 2, 'color', colors(1, :))
-    struct('key', 'IdealPaperV_p', 'label', 'Ideal paper $v_p$', 'axis', 'left',  'style', '--', 'lw', 2, 'color', colors(1, :))
-    struct('key', 'v__p_F_',    'label', '$v_{p,Fundamental}$',         'axis', 'left',  'style', '--', 'lw', 2, 'color', colors(1, :))
-    % struct('key', 'v__store_',  'label', '$v_{store}$',       'axis', 'left',  'style', '-', 'lw', 2, 'color', colors(3, :))
-    struct('key', 'i__eq_',     'label', 'Simscape $i_{eq}$',          'axis', 'right', 'style', '-', 'lw', 2, 'color', colors(2, :))
-    % struct('key', 'i__rect_',   'label', '$i_{rect}$',        'axis', 'right', 'style', '--', 'lw', 2, 'color', colors(4, :))
-    % struct('key', 'i__piezo_',  'label', '$i_{piezo}$',       'axis', 'right', 'style', '-', 'lw', 2, 'color', colors(5, :))
+    struct('key', 'SimscapeV_p', ...
+           'label', 'Simscape $V_p$', ...
+           'axis', 'left', ...
+           'style', '-', ...
+           'lw', 2.6, ...
+           'color', colors(1,:), ...
+           'scale', 1)
+
+    struct('key', 'IdealPaperV_p', ...
+           'label', 'Ideal paper $V_p$', ...
+           'axis', 'left', ...
+           'style', '--', ...
+           'lw', 1.8, ...
+           'color', colors(7,:), ...
+           'scale', 1)
+
+    struct('key', 'v__p_F_', ...
+           'label', 'Fundamental $V_p$', ...
+           'axis', 'left', ...
+           'style', '--', ...
+           'lw', 1.8, ...
+           'color', colors(4,:), ...
+           'scale', 1)
+
+    struct('key', 'i__eq_', ...
+           'label', 'Simscape $I_{eq}$', ...
+           'axis', 'right', ...
+           'style', '-', ...
+           'lw', 2.0, ...
+           'color', colors(2,:), ...
+           'scale', 1e3)
 ];
 
 H = gobjects(0);
@@ -60,22 +92,53 @@ for i = 1:numel(specs)
     trace = figData.(fieldName);
     yyaxis(hAx, specs(i).axis);
 
-    h = plot(hAx, trace.XData, trace.YData, ...
-            'LineStyle', specs(i).style, 'LineWidth', specs(i).lw, 'Color', specs(i).color, 'Marker', 'none');
+    % Apply unit scaling (e.g., convert A to mA for i_eq)
+    yData = trace.YData * specs(i).scale;
+
+    h = plot(hAx, trace.XData, yData, ...
+    'LineStyle', specs(i).style, ...
+    'LineWidth', specs(i).lw, ...
+    'Color', specs(i).color, ...
+    'Marker', 'none');
+
+    % h = plot(hAx, trace.XData, yData, ...
+    %         'LineStyle', specs(i).style, 'LineWidth', specs(i).lw, 'Color', specs(i).color, 'Marker', 'none');
     H(end + 1) = h;
     labels(end + 1) = specs(i).label;
 end
 
+% ----- Axis tick font size -----
+tickFontSize  = 10;
+labelFontSize = 12;
+
+% Set tick-number font sizes
+hAx.XAxis.FontSize = tickFontSize;
+hAx.YAxis(1).FontSize = tickFontSize;
+hAx.YAxis(2).FontSize = tickFontSize;
+
+% ----- Axis labels -----
 yyaxis(hAx, 'left');
-ylabel(hAx, 'Voltage (V)', 'Interpreter', 'tex');
+ylLeft = ylabel(hAx, 'Voltage (V)', ...
+    'Interpreter', 'tex');
 set(hAx, 'YColor', 'k');
 
 yyaxis(hAx, 'right');
-ylabel(hAx, 'Current (A)', 'Interpreter', 'tex');
+ylRight = ylabel(hAx, 'Current (mA)', ...
+    'Interpreter', 'tex');
 set(hAx, 'YColor', 'k');
 
-% Set x-axis label
-xlabel(hAx, 'Time within one cycle (s)', 'Interpreter', 'tex');
+xl = xlabel(hAx, 'Time within one cycle (s)', ...
+    'Interpreter', 'tex');
+
+xEnd = max(figData.SimscapeV_p.XData);
+disp(xEnd);
+
+xlim(hAx, [0 xEnd]);
+
+% IMPORTANT: set label font sizes AFTER tick font sizes
+xl.FontSize      = labelFontSize;
+ylLeft.FontSize  = labelFontSize;
+ylRight.FontSize = labelFontSize;
 
 % Configure grid
 grid(hAx, 'on');
@@ -90,21 +153,38 @@ hAx.LineWidth = 0.75;
 set(hAx, 'TickLabelInterpreter', 'tex');
 
 % Configure legend with professional styling
-leg = legend(hAx, H, labels, 'Location', 'best', 'Interpreter', 'latex');
-set(leg, 'Box', 'on', 'LineWidth', 0.75, 'FontSize', 11);
+leg = legend(hAx, H, labels, 'Location', 'northeast', 'Interpreter', 'latex');
+set(leg, 'Box', 'on', 'LineWidth', 0.5, 'FontSize', 10.5);
+
+% Make legend line samples shorter
+leg.ItemTokenSize = [12, 6];
+
+drawnow;
+
+% Position legend exactly against top-right axes border
+leg.Units = 'normalized';
+hAx.Units = 'normalized';
+
+axPos  = hAx.Position;
+legPos = leg.Position;
+
+leg.Position = [ ...
+    axPos(1) + axPos(3) - legPos(3) - 0.015, ... % flush right
+    axPos(2) + axPos(4) - legPos(4) - 0.01, ... % flush top
+    legPos(3), ...
+    legPos(4)];
 
 hold(hAx, 'off');
 
 % Adjust layout to prevent label cutoff
 set(hFig, 'PaperPositionMode', 'auto');
 
-% Set global font size for the figure to match text font size
-fontsize(hFig, 16, 'points');
+exportgraphics(hFig, outputFolder + '.png', ...
+    'Resolution', 300);
+exportgraphics(hFig, outputPath + '.png', ...
+    'Resolution', 300);
 
+% MATLAB figure
+savefig(hFig, outputFolder + '.fig');
 
-% Export in publication quality (300 DPI is standard for journals)
-exportgraphics(hFig, outputFolder + FigName + '.png', 'Resolution', 300);
-% Also save as PDF for vector format (recommended for papers)
-exportgraphics(hFig, outputFolder + FigName + '.pdf', 'Resolution', 300);
-% Keep MATLAB figure format for future editing
-savefig(hFig, outputFolder + FigName + '.fig');
+close all;
