@@ -1,0 +1,206 @@
+===== LIANG/LIAO EXPERIMENTAL EQUIVALENT CIRCUIT =====
+Acceleration (rms) = 10.00 m/s^2, Peak = 14.1421 m/s^2
+Req = 1.000000e+06 ohm
+Ceq = 4.480000e-10 F
+Leq = 3.100000e+04 H
+Cp  = 3.469000e-08 F
+|Veq| = 2.082429e+02 V
+Calculated |Voc,piezo| = 2.121431e+01 V
+
+============================================================
+MEASURING ACTUAL OPEN-CIRCUIT TRANSDUCER VOLTAGE
+============================================================
+
+===== ACTUAL OPEN-CIRCUIT MEASUREMENT =====
+Measured open-circuit Voc fundamental amplitude = 19.893405 V
+Measured open-circuit Voc peak-to-peak = 39.797737 V
+Measured open-circuit Voc half peak-to-peak = 19.898868 V
+
+============================================================
+SINGLE DETAILED PSSHI RUN
+============================================================
+
+===== Simscape PSSHI Results =====
+Rload = 1.000000e+06 ohm
+Average harvested/load power = 1.753782 mW
+Average Vstore = 41.878093 V
+Vrect = Vstore + VF_bridge = 42.878093 V
+Peak-to-peak vp = 86.001939 V
+Peak-to-peak vcap = 85.527447 V
+Peak-to-peak ieq_eff = 2.838237e-04 A
+
+===== Fundamental Components =====
+Fundamental ieq amplitude I0 = 1.423206e-04 A
+Fundamental vp amplitude = 52.022679 V
+Current sign used = +1
+
+===== Paper-Style PSSHI Estimates =====
+Voc = I0/(wCp) = 15.546564 V
+Measured actual open-circuit Voc = 19.893405 V
+Vtilde_rect = 2.758043
+Vtilde_F = 0.064323
+gamma = -0.70000000, Qsshi = 4.4040
+theta_paper = 1.397341 rad = 80.062 deg
+theta_sim_rough = 1.284911 rad = 73.620 deg
+theta_sim_exact = 1.618668 rad = 92.743 deg
+
+===== Equivalent Electrical Impedance =====
+Zelec_sim = 3.397482e+05 + j-1.348498e+05 ohm
+Zelec_paper = 3.597946e+05 + j-4.267591e+04 ohm
+Normalized Zelec_sim: Re*wCp = 3.110216, Im*wCp = -1.234479
+Normalized Zelec_paper: Re*wCp = 3.293731, Im*wCp = -0.390676
+
+===== PSSHI Impedance Decomposition =====
+Rd = 1.401380e+05 ohm
+Rh = 2.196566e+05 ohm
+XE = -4.267591e+04 ohm
+XL = 8.180707e+06 ohm
+XC = -8.458490e+06 ohm
+Zmech = 1.000000e+06 + j-2.777825e+05 ohm
+Rd + Rh = 3.597946e+05 ohm
+Re(Zelec_paper) = 3.597946e+05 ohm
+Im(Zelec_paper) = -4.267591e+04 ohm
+
+===== Harvested vs Extracted Power =====
+Simscape harvested/load power Vstore^2/Rload = 1.753782 mW
+Interface input power mean(vp*ip) = 3.408604 mW
+Time-domain extracted power mean(vp*ieq_eff) = 3.409008 mW
+Fundamental extracted power 0.5*Re(Zelec)*I0^2 = 3.440828 mW
+Eq. 42 harvested power = 2.145827 mW
+Eq. 43 extracted power = 3.514836 mW
+Underwater Eq. 29 Vrect = NaN V, Vs = NaN V
+Underwater Eq. 29 harvested/load power = NaN mW
+Predicted dissipated power = 1.369009 mW
+
+===== Equivalent Source =====
+Veq_amp inferred from measured open-circuit Voc = 195.276781 V
+Ideal VSrc_eq_amp used in model source = 208.242947 V
+
+===== Switch / Flip Timing, Final Cycle =====
+Flip source = BJT inductor current
+BJT flip current threshold = 6.228561e-04 A
+Expected ideal LC half-period Tsw = 126.853 us
+i_eq zero-crossings in final cycle:
+  ZC 1: absolute 4.986994523 s, cycle 0.010801074 s
+  ZC 2: absolute 4.998899285 s, cycle 0.022705837 s
+Event 1: closed from 4.987946924 s to 4.988080749 s a
+bsolute (cycle 0.011753476 s to 0.011887301 s)
+         duration = 133.824 us
+         nearest i_eq zero-cross = 4.986994523 s absolute (cycle 0.010801074 s)
+         switch delay from zero-cross = 952.402 us
+Event 2: closed from 4.999851345 s to 4.999985790 s absolute (cycle 0.023657897 s to 0.023792342 s)
+         duration = 134.446 us
+         nearest i_eq zero-cross = 4.998899285 s absolute (cycle 0.022705837 s)
+         switch delay from zero-cross = 952.060 us
+
+============================================================
+RUNNING Rload SWEEP
+============================================================
+
+[01/20] Rload = 1.0000e+04 ohm, tau = 0.010 s, StopTime = 5.000 s
+
+[02/20] Rload = 1.4384e+04 ohm, tau = 0.014 s, StopTime = 5.000 s
+
+[03/20] Rload = 2.0691e+04 ohm, tau = 0.021 s, StopTime = 5.000 s
+
+[04/20] Rload = 2.9764e+04 ohm, tau = 0.030 s, StopTime = 5.000 s
+
+[05/20] Rload = 4.2813e+04 ohm, tau = 0.043 s, StopTime = 5.000 s
+
+[06/20] Rload = 6.1585e+04 ohm, tau = 0.062 s, StopTime = 5.000 s
+
+[07/20] Rload = 8.8587e+04 ohm, tau = 0.089 s, StopTime = 5.000 s
+
+[08/20] Rload = 1.2743e+05 ohm, tau = 0.127 s, StopTime = 5.000 s
+
+[09/20] Rload = 1.8330e+05 ohm, tau = 0.183 s, StopTime = 5.000 s
+
+[10/20] Rload = 2.6367e+05 ohm, tau = 0.264 s, StopTime = 5.000 s
+
+[11/20] Rload = 3.7927e+05 ohm, tau = 0.379 s, StopTime = 5.000 s
+
+[12/20] Rload = 5.4556e+05 ohm, tau = 0.546 s, StopTime = 5.000 s
+
+[13/20] Rload = 7.8476e+05 ohm, tau = 0.785 s, StopTime = 5.000 s
+
+[14/20] Rload = 1.1288e+06 ohm, tau = 1.129 s, StopTime = 5.644 s
+
+[15/20] Rload = 1.6238e+06 ohm, tau = 1.624 s, StopTime = 8.119 s
+
+[16/20] Rload = 2.3357e+06 ohm, tau = 2.336 s, StopTime = 11.679 s
+
+[17/20] Rload = 3.3598e+06 ohm, tau = 3.360 s, StopTime = 16.799 s
+
+[18/20] Rload = 4.8329e+06 ohm, tau = 4.833 s, StopTime = 24.165 s
+
+[19/20] Rload = 6.9519e+06 ohm, tau = 6.952 s, StopTime = 34.760 s
+
+[20/20] Rload = 1.0000e+07 ohm, tau = 10.000 s, StopTime = 50.000 s
+Warning: Sweep failed at Rload = 1.0000e+07 ohm: Simulink will stop the simulation of model 'simscape_model' because the 2 zero crossing
+signal(s) identified below caused 1000 consecutive zero crossing events in time interval between 37.844003886105625 and 37.844003886314944.
+
+Number of consecutive ZCs : 641
+               Block path : 'simscape_model/Subsystem2/P-SSHI/Variant Subsystem/Zero Cross Circ 1/Subsystem/Diode13'
+               Block type : 'foundation.electrical.elements.pwl_diode'
+              ZC location : '<a
+              href="matlab:opentoline('/usr/local/MATLAB/R2026a/toolbox/physmod/simscape/library/m/+foundation/+electrical/+elements/pwl_diode.ssc',
+              38, 8)">between line: 38, column: 8 and line: 38, column: 36 in file:
+              /usr/local/MATLAB/R2026a/toolbox/physmod/simscape/library/m/+foundation/+electrical/+elements/pwl_diode.ssc</a>'
+          ZC location tag : 'foundation.electrical.elements.pwl_diode,38,8'
+
+
+Number of consecutive ZCs : 359
+               Block path : 'simscape_model/Subsystem2/P-SSHI/Variant Subsystem/Zero Cross Circ 1/Subsystem/Diode15'
+               Block type : 'foundation.electrical.elements.pwl_diode'
+              ZC location : '<a
+              href="matlab:opentoline('/usr/local/MATLAB/R2026a/toolbox/physmod/simscape/library/m/+foundation/+electrical/+elements/pwl_diode.ssc',
+              38, 8)">between line: 38, column: 8 and line: 38, column: 36 in file:
+              /usr/local/MATLAB/R2026a/toolbox/physmod/simscape/library/m/+foundation/+electrical/+elements/pwl_diode.ssc</a>'
+          ZC location tag : 'foundation.electrical.elements.pwl_diode,38,8'
+
+
+> In main (line 374)
+In test_script4 (line 7)
+
+============================================================
+SWEEP COMPLETE
+============================================================
+    valid    Rload_ohm     Vstore_avg_V    Vrect_V    Voc_V     Vtilde_rect    Vtilde_F    theta_paper_rad    theta_sim_rough_rad    theta_sim_exact_rad    Pload_avg_W    Pinterface_avg_W    Pdelta_time_W    Pdelta_fundamental_W    Ph_eq42_auto_W    Pdelta_eq43_auto_W    Vrect_eq29_V    Vs_eq29_V    Pload_eq29_W    Re_Zelec_sim_ohm    Im_Zelec_sim_ohm    Re_Zelec_paper_ohm    Im_Zelec_paper_ohm      Rd_ohm        Rh_ohm      XE_ohm       XL_ohm        XC_ohm         R            Zmech             I0_A       VpF_amp_V    Veq_amp_V    currentSign    gamma    Qsshi    openCircuitVoltage     Type      stopTime_s    t_start_ss_s
+    _____    __________    ____________    _______    ______    ___________    ________    _______________    ___________________    ___________________    ___________    ________________    _____________    ____________________    ______________    __________________    ____________    _________    ____________    ________________    ________________    __________________    __________________    __________    __________    _______    __________    ___________    _____    _________________    __________    _________    _________    ___________    _____    _____    __________________    _______    __________    ____________
+
+    true          10000       1.1169       2.1169     20.358      0.10398      0.049121        0.25043               1.9446                0.46549          0.00012609        0.00024196        0.00024198           0.00024577           0.00012944          0.00024864            NaN            NaN           NaN                 14152             -4532.2                14429             -359.55              6917.1        7511.5    -359.55    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00018637     2.7694       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"           5           3.75
+    true          14384       1.5931       2.5931       20.3      0.12774       0.04926        0.27773               1.9918                0.48668           0.0001774        0.00029466         0.0002947           0.00029768           0.00018337          0.00030342            NaN            NaN           NaN                 17238             -5782.9                17715                -489              7009.3         10706       -489    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00018584      3.379       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"           5           3.75
+    true          20691       2.2654       3.2654     20.216      0.16153      0.049465        0.31258               2.0263                 0.5133          0.00024872         0.0003687        0.00036874           0.00037419           0.00025825           0.0003801            NaN            NaN           NaN                 21850             -7056.9                22384             -694.28              7175.8         15208    -694.28    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00018507     4.2495       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"           5           3.75
+    true          29764       3.2079       4.2079     20.098      0.20937      0.049757        0.35631               1.6839                0.54729          0.00034623        0.00047141         0.0004715           0.00047629           0.00036073          0.00048622            NaN            NaN           NaN                 28141             -9352.6                28983             -1022.3              7480.3         21503    -1022.3    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00018399     5.4559       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"           5           3.75
+    true          42813       4.5151       5.5151     19.935      0.27666      0.050163        0.41029              0.78226                0.59113          0.00047651        0.00061149        0.00061151           0.00061361           0.00049802          0.00063071            NaN            NaN           NaN                 36849              -13113                38239               -1548              8044.6         30194      -1548    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00018249     7.1378       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"           5           3.75
+    true          61585       6.3026       7.3026     19.714      0.37043      0.050726        0.47592              0.48695                0.64697          0.00064525         0.0007984        0.00079847            0.0008034           0.00067668          0.00082325            NaN            NaN           NaN                 49336              -17050                51092               -2388              9096.5         41995      -2388    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00018047     9.4202       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"           5           3.75
+    true          88587        8.698        9.698     19.418      0.49944      0.051499        0.55449              0.52465                0.71744          0.00085419         0.0010403         0.0010403            0.0010463           0.00089974           0.0010722            NaN            NaN           NaN                 66224              -23866                68683             -3715.9               11049         57633    -3715.9    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00017776     12.513       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"           5           3.75
+    true     1.2743e+05       11.823       12.823     19.033      0.67374       0.05254        0.64703              0.57805                0.80484           0.0010972         0.0013409         0.0013409            0.0013668            0.0011628           0.0013817            NaN            NaN           NaN                 90040              -28847                92286             -5773.8               14618         77667    -5773.8    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00017424     16.474       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"           5           3.75
+    true      1.833e+05       15.764       16.764     18.552      0.90361      0.053902        0.75406              0.66916                0.91041           0.0013558         0.0016961          0.001696            0.0017287            0.0014498           0.0017472            NaN            NaN           NaN            1.1987e+05              -38944           1.2312e+05               -8868               20960    1.0216e+05      -8868    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00016984     21.405       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"           5           3.75
+    true     2.6367e+05       20.524       21.524     17.979       1.1972       0.05562        0.87519              0.77597                  1.035           0.0015977         0.0020899         0.0020898            0.0021246            0.0017307           0.0021527            NaN            NaN           NaN            1.5685e+05              -53653           1.6202e+05              -13325               31761    1.3026e+05     -13325    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00016459     27.285       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"           5           3.75
+    true     3.7927e+05       25.989       26.989     17.333       1.5571      0.057694         1.0088               0.8985                 1.1775           0.0017809         0.0024956         0.0024956            0.0025269            0.0019662           0.0025708            NaN            NaN           NaN            2.0073e+05              -72626           2.0898e+05              -19399               49147    1.5984e+05     -19399    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00015867     33.871       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"           5           3.75
+    true     5.4556e+05       31.917       32.917     16.649       1.9771      0.060064         1.1518               1.0367                 1.3351           0.0018672         0.0028814         0.0028813            0.0029063            0.0021191           0.0029687            NaN            NaN           NaN            2.5022e+05              -97287           2.6275e+05              -27125               75195    1.8756e+05     -27125    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00015241     40.918       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"           5           3.75
+    true     7.8476e+05       37.963       38.963     15.972       2.4395      0.062611         1.2993               1.1875                 1.5033           0.0018365         0.0032188         0.0032189            0.0032487            0.0021689           0.0033179            NaN            NaN           NaN            3.0393e+05         -1.1921e+05           3.2068e+05              -36197          1.1106e+05    2.0962e+05     -36197    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00014621     47.734       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"           5           3.75
+    true     1.1288e+06       43.768       44.768     15.347       2.9172      0.065161         1.4456               1.3352                 1.6767            0.001697         0.0034984         0.0034926            0.0035132            0.0021197           0.0036019            NaN            NaN           NaN              3.56e+05         -1.4532e+05            3.791e+05              -45958            1.56e+05     2.231e+05     -45958    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00014049      54.02       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"      5.6442         4.2331
+    true     1.6238e+06       49.027       50.027     14.804       3.3793      0.067549         1.5846               1.4828                 1.8477           0.0014803         0.0037003         0.0037008             0.003738            0.0019973           0.0038187            NaN            NaN           NaN            4.0705e+05         -1.8101e+05           4.3427e+05              -55576          2.0714e+05    2.2713e+05     -55576    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00013552     60.373       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"      8.1189         6.0892
+    true     2.3357e+06       53.544       54.544     14.357       3.7992      0.069653          1.711               1.6211                 2.0124           0.0012275          0.003858         0.0038525            0.0038743             0.001836           0.0039765            NaN            NaN           NaN            4.4858e+05         -1.9587e+05           4.8323e+05              -64305          2.6012e+05    2.2311e+05     -64305    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00013143     64.332       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"      11.679          8.759
+    true     3.3598e+06       57.254       58.254     13.966       4.1712      0.071603         1.8249               1.7467                 2.1637          0.00097567           0.00396         0.0039579            0.0039266             0.001661            0.004091            NaN            NaN           NaN            4.8045e+05         -2.2616e+05            5.257e+05              -71912          3.1226e+05    2.1343e+05     -71912    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00012785     67.891       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"      16.799         12.599
+    true     4.8329e+06       60.185       61.185     13.737        4.454      0.072796         1.9137               1.8504                 2.3003          0.00074949         0.0040298         0.0040318            0.0041156            0.0015112           0.0041648            NaN            NaN           NaN            5.2049e+05         -2.2284e+05            5.574e+05              -77550          3.5515e+05    2.0224e+05     -77550    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00012576     71.201       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"      24.165         18.123
+    true     6.9519e+06       62.429       63.429     13.539       4.6849      0.073862         1.9883               1.9384                 2.4202          0.00056061         0.0040827         0.0040833            0.0041409            0.0013794           0.0042178            NaN            NaN           NaN            5.3913e+05         -2.4998e+05           5.8291e+05              -82023          3.9227e+05    1.9064e+05     -82023    8.1807e+06    -8.4585e+06    1e+06    1e+06-2.7778e+05i    0.00012394     73.653       195.28            1        -0.7     4.404       {[ 19.8934]}       "PSSHI"       34.76          26.07
+    false         1e+07          NaN          NaN        NaN          NaN           NaN            NaN                  NaN                    NaN                 NaN               NaN               NaN                  NaN                  NaN                 NaN            NaN            NaN           NaN                   NaN                 NaN                  NaN                 NaN                 NaN           NaN        NaN           NaN            NaN      NaN      NaN+0i                    NaN        NaN          NaN          NaN         NaN       NaN       {0×0 double}       ""              NaN            NaN
+
+
+===== OPTIMUM FROM SIMSCAPE LOAD SWEEP =====
+Optimum Rload = 5.455595e+05 ohm
+Maximum harvested/load power = 1.867236 mW
+Vstore_avg = 31.916723 V
+Vrect = 32.916723 V
+Vtilde_rect = 1.977110
+theta_paper = 1.151775 rad = 65.992 deg
+Zelec_sim = 2.502238e+05 + j-9.728723e+04 ohm
+Zelec_paper = 2.627514e+05 + j-2.712506e+04 ohm
+
+Saved:
+  psshi_single_result in base workspace
+  psshi_sweep_results and psshi_sweep_table if doSweep=true
+Total execution time: 878.1188 seconds.

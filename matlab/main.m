@@ -147,7 +147,7 @@ Vd_single = 0.5;
 VF_bridge = 2 * Vd_single;  % total conducting bridge drop, V
 r_single = 0.03; % the on resistance
 
-C1 = 2.2e-9*9;
+C1 = 2.2e-9;
 % C1 = C1Test*Cp;
 
 % Cp_ref = 34.69e-9;

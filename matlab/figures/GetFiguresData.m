@@ -1,4 +1,9 @@
 % Save open figures to file, Type is SEH, PSSHI or SSSHI from main.m
+
+if CrossCircuitType == "BJT"
+    Type = CrossCircuitType + '-' + 'PSSHI'
+end
+
 figureFolder = 'figures/' + Type + '/figs'; 
 saveToFile = true;
 
